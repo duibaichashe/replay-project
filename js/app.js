@@ -1451,7 +1451,6 @@ function displayResultsPage(results, page) {
             <td class="align-middle text-nowrap">${timeDisplay}</td>
             <td class="align-middle text-center">${anchorDisplay}</td>
             <td class="align-middle text-nowrap">${timeSlotDisplay}</td>
-            <td class="align-middle text-center">${positionDisplay}</td>
         `;
         
         tableBody.appendChild(row);
