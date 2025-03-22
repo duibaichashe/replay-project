@@ -1,0 +1,327 @@
+/* 全局样式 */
+:root {
+    --primary-color: #4a90e2;
+    --primary-light: #f0f7ff;
+    --primary-dark: #357abd;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+    --background-color: #f8f9fa;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+}
+
+body {
+    background-color: var(--background-color);
+    color: var(--text-color);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* 顶部导航栏样式 */
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 1rem 0;
+}
+
+.navbar-brand img {
+    height: 40px;
+}
+
+/* 主容器样式 */
+.main-container {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    margin-top: 2rem;
+    padding: 2rem;
+}
+
+/* 上传区域样式 */
+.upload-box {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 1.5rem;
+    height: 100%;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+    box-shadow: 0 5px 15px rgba(74, 144, 226, 0.1);
+}
+
+.upload-area {
+    border: 2px dashed var(--primary-color);
+    border-radius: 10px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 1rem;
+    background-color: var(--primary-light);
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    border-color: var(--primary-dark);
+    background-color: #e6f0fa;
+}
+
+.upload-area.dragover {
+    border-color: var(--primary-dark);
+    background-color: #e6f0fa;
+    transform: scale(1.02);
+}
+
+.upload-area input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.upload-area label.btn {
+    cursor: pointer;
+    z-index: 1;
+}
+
+.upload-area label.btn:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.upload-icon {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 2.5rem !important;
+}
+
+/* 文件信息样式 */
+.file-info {
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    background-color: var(--primary-light);
+    border-radius: 5px;
+    margin-top: 1rem;
+    min-height: 50px;
+}
+
+.file-details {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.file-name {
+    font-weight: 500;
+    color: var(--primary-dark);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+.file-size {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+/* 按钮样式 */
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-dark);
+    border-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+/* 结果区域样式 */
+.results-section {
+    margin-top: 2rem;
+}
+
+.results-section .card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+}
+
+.results-section .card-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: 10px 10px 0 0 !important;
+    padding: 1rem 1.5rem;
+}
+
+/* 图表容器样式 */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+    background-color: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    margin-bottom: 1.5rem;
+}
+
+/* 标签页样式 */
+.nav-tabs {
+    border-bottom: 2px solid var(--border-color);
+}
+
+.nav-tabs .nav-link {
+    color: var(--secondary-color);
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--primary-color);
+    border: none;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color);
+    border: none;
+    border-bottom: 2px solid var(--primary-color);
+}
+
+/* AI建议卡片样式 */
+.suggestion-highlight {
+    background-color: var(--primary-light);
+    border-left: 3px solid var(--primary-color);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 0 5px 5px 0;
+}
+
+/* 表格样式 */
+.table {
+    margin-bottom: 0;
+    vertical-align: middle;
+    font-size: 0.95rem;
+}
+
+.table thead th {
+    background-color: var(--primary-light);
+    border-bottom: 2px solid var(--primary-color);
+    color: var(--primary-dark);
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.75rem 0.5rem;
+}
+
+.table tbody tr:hover {
+    background-color: var(--primary-light);
+}
+
+.table td {
+    padding: 0.75rem 0.5rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-color);
+    word-break: break-word;
+}
+
+.table .product-name {
+    display: block;
+    max-width: 250px;
+    font-size: 0.9rem;
+}
+
+.table td.text-center, .table th.text-center {
+    text-align: center;
+}
+
+.table td.text-end, .table th.text-end {
+    text-align: right;
+}
+
+.table .fw-bold {
+    font-weight: 600;
+    color: var(--primary-dark);
+}
+
+/* 分页样式 */
+.pagination-container {
+    margin-top: 1.5rem;
+}
+
+.pagination-container .btn-group {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.pagination-container .btn {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+
+.pagination-container .btn-outline-primary:hover {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.pagination-container .btn-outline-secondary {
+    min-width: 150px;
+}
+
+/* 加载动画样式 */
+.loading-modal .modal-content {
+    background-color: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 15px;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+    color: var(--primary-color);
+}
+
+/* 页脚样式 */
+footer {
+    margin-top: 3rem;
+    padding: 2rem 0;
+    background-color: var(--primary-light);
+    border-top: 1px solid var(--border-color);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .main-container {
+        margin-top: 1rem;
+        padding: 1rem;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+    
+    .nav-tabs .nav-link {
+        padding: 0.75rem 1rem;
+    }
+} 

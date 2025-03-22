@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>销售数据与主播排班匹配分析系统</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <img src="img/logo.svg" alt="DataMatch Logo" class="me-2">
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#"><i class="bi bi-house-door"></i> 首页</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#help-modal">
+                            <i class="bi bi-question-circle"></i> 帮助
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="main-container">
+            <header class="text-center mb-5">
+                <h1 class="display-5 fw-bold text-primary mb-3">销售数据与主播排班匹配分析</h1>
+                <p class="lead text-secondary">上传销售数据和主播排班表，获取AI驱动的匹配分析和销售建议</p>
+            </header>
+
+            <main>
+                <section class="upload-section mb-5">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h2 class="h4 mb-0"><i class="bi bi-cloud-upload me-2"></i>文件上传</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="upload-box" id="sales-upload-box">
+                                        <h3 class="h5 mb-3"><i class="bi bi-file-earmark-spreadsheet me-2"></i>销售数据</h3>
+                                        <div class="upload-area" id="sales-upload-area" data-status="sales-status" data-type="sales">
+                                            <i class="bi bi-file-earmark-excel upload-icon"></i>
+                                            <p class="mb-3">拖放销售数据Excel文件至此处</p>
+                                            <input type="file" id="sales-file" accept=".xlsx, .xls" style="display: none;">
+                                            <label for="sales-file" class="btn btn-outline-primary">选择文件</label>
+                                        </div>
+                                        <div class="file-info" id="sales-file-info">
+                                            <div class="file-details d-none">
+                                                <span class="file-name"></span>
+                                                <span class="file-size"></span>
+                                            </div>
+                                        </div>
+                                        <div id="sales-status"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="upload-box" id="schedule-upload-box">
+                                        <h3 class="h5 mb-3"><i class="bi bi-calendar-check me-2"></i>主播排班表</h3>
+                                        <div class="upload-area" id="schedule-upload-area" data-status="schedule-status" data-type="schedule">
+                                            <i class="bi bi-file-earmark-excel upload-icon"></i>
+                                            <p class="mb-3">拖放主播排班Excel文件至此处</p>
+                                            <input type="file" id="schedule-file" accept=".xlsx, .xls" style="display: none;">
+                                            <label for="schedule-file" class="btn btn-outline-primary">选择文件</label>
+                                        </div>
+                                        <div class="file-info" id="schedule-file-info">
+                                            <div class="file-details d-none">
+                                                <span class="file-name"></span>
+                                                <span class="file-size"></span>
+                                            </div>
+                                        </div>
+                                        <div id="schedule-status"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                <button id="analyze-btn" class="btn btn-primary me-3" disabled>
+                                    <i class="bi bi-play-circle me-2"></i>开始分析
+                                </button>
+                                <button id="clear-btn" class="btn btn-outline-secondary">
+                                    <i class="bi bi-trash me-2"></i>清除
+                                </button>
+                            </div>
+                            <div id="notice-area" class="mt-4"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="results-section d-none" id="results-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="h4 mb-0"><i class="bi bi-graph-up me-2"></i>分析结果</h2>
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs mb-4" id="resultTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="matching-tab" data-bs-toggle="tab" data-bs-target="#matching" type="button" role="tab">
+                                        <i class="bi bi-table me-2"></i>匹配结果
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="analysis-tab" data-bs-toggle="tab" data-bs-target="#analysis" type="button" role="tab">
+                                        <i class="bi bi-bar-chart me-2"></i>数据分析
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="ai-tab" data-bs-toggle="tab" data-bs-target="#ai" type="button" role="tab">
+                                        <i class="bi bi-lightbulb me-2"></i>AI建议
+                                    </button>
+                                </li>
+                            </ul>
+                            <div class="tab-content" id="resultTabsContent">
+                                <div class="tab-pane fade show active" id="matching" role="tabpanel">
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5>主播匹配结果</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <!-- 匹配结果统计 -->
+                                            <div id="matching-summary"></div>
+                                            
+                                            <div id="matching" class="mb-5">
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-hover">
+                                                        <thead class="table-light">
+                                                            <tr>
+                                                                <th>选购商品</th>
+                                                                <th>商品规格</th>
+                                                                <th>商品数量</th>
+                                                                <th>订单金额</th>
+                                                                <th>订单时间</th>
+                                                                <th>匹配主播</th>
+                                                                <th>工作时段</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody id="matching-table-body">
+                                                            <!-- 这里将通过JavaScript填充结果 -->
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="analysis" role="tabpanel">
+                                    <div class="row mt-4">
+                                        <div class="col-md-12">
+                                            <div class="card">
+                                                <div class="card-header">
+                                                    <h5 class="card-title mb-0">数据分析</h5>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="row">
+                                                        <div class="col-md-6 mb-4">
+                                                            <div class="chart-container" style="position: relative; height:300px;">
+                                                                <canvas id="sales-trend-chart"></canvas>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6 mb-4">
+                                                            <div class="chart-container" style="position: relative; height:300px;">
+                                                                <canvas id="anchor-performance-chart"></canvas>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-12 mb-4">
+                                                            <div class="chart-container" style="position: relative; height:300px;">
+                                                                <canvas id="hourly-sales-chart"></canvas>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mt-3">
+                                                        <div class="col-12">
+                                                            <div class="alert alert-info">
+                                                                <h6 class="alert-heading">分析建议</h6>
+                                                                <div id="ai-suggestions"></div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                </div>
+                                <div class="tab-pane fade" id="ai" role="tabpanel">
+                                    <div class="ai-suggestions">
+                                        <div class="card mb-4">
+                                            <div class="card-header">
+                                                <h3 class="h5 mb-0"><i class="bi bi-clipboard-data me-2"></i>整体销售分析</h3>
+                                            </div>
+                                            <div class="card-body" id="overall-analysis">
+                                                <!-- AI生成的整体分析 -->
+                                            </div>
+                                        </div>
+                                        <div id="anchor-suggestions">
+                                            <!-- 这里将通过JavaScript为每个主播添加建议卡片 -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-center mt-4">
+                                <button id="export-btn" class="btn btn-success">
+                                    <i class="bi bi-download me-2"></i>导出结果
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <footer class="text-center">
+            <p class="mb-0">销售数据与主播排班匹配分析系统 &copy; 2025</p>
+        </footer>
+    </div>
+
+    <!-- 加载提示模态框 -->
+    <div class="modal fade" id="loading-modal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-5">
+                    <div class="spinner-border mb-3" role="status">
+                        <span class="visually-hidden">正在加载...</span>
+                    </div>
+                    <h5 id="loading-message" class="mb-3">正在处理数据...</h5>
+                    <div class="progress">
+                        <div id="loading-progress" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div class="modal fade" id="help-modal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>使用帮助</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion" id="helpAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                    <i class="bi bi-file-earmark-excel me-2"></i>数据格式要求
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <h6>销售数据Excel格式要求：</h6>
+                                    <ul>
+                                        <li>选购商品</li>
+                                        <li>商品规格</li>
+                                        <li>商品数量（数字格式）</li>
+                                        <li>订单应付金额（数字格式）</li>
+                                        <li>订单提交时间（格式：YYYY-MM-DD HH:MM:SS）</li>
+                                    </ul>
+                                    <h6>主播排班表格式要求：</h6>
+                                    <ul>
+                                        <li>第一行：日期列标题（例如：3月1号、3月2号等）</li>
+                                        <li>第一列：主播列（主播姓名/ID）</li>
+                                        <li>时间段格式：HH:MM-HH:MM（例如：08:00-09:00）</li>
+                                        <li>无排班时段使用"-"表示</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                    <i class="bi bi-upload me-2"></i>如何上传文件
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <p>您可以通过以下两种方式上传文件：</p>
+                                    <ol>
+                                        <li>直接将Excel文件拖放到对应的上传区域</li>
+                                        <li>点击"选择文件"按钮，从文件浏览器中选择文件</li>
+                                    </ol>
+                                    <p class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>注意：只支持.xlsx和.xls格式的Excel文件</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                    <i class="bi bi-graph-up me-2"></i>查看分析结果
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <p>分析结果分为三个部分：</p>
+                                    <ul>
+                                        <li><strong>匹配结果：</strong>显示每个订单与主播的匹配详情</li>
+                                        <li><strong>数据分析：</strong>包含销售趋势图和主播业绩对比图</li>
+                                        <li><strong>AI建议：</strong>基于数据分析的优化建议</li>
+                                    </ul>
+                                    <p>您可以使用"导出结果"按钮将分析结果导出为Excel文件。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html> 
