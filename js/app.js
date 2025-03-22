@@ -6,6 +6,7 @@ let currentPage = 1;  // 当前页码
 let itemsPerPage = 10;  // 每页显示条数
 let availableScheduleDates = [];  // 可用的排班日期
 let analysisResults = [];  // 分析结果
+let productCategoryAnalysis = {}; // 存储商品分类分析结果
 
 // DOM 元素
 const salesFileInput = document.getElementById('sales-file');
@@ -1340,6 +1341,9 @@ function displayResults(results) {
     // 创建分页控制
     createPagination(matchedResults.length);
     
+    // 执行商品分类分析
+    analyzeProductCategories(matchedResults);
+    
     // 显示结果区域
     resultsSection.classList.remove('d-none');
 }
@@ -1932,4 +1936,249 @@ function timeToMinutes(timeStr) {
     if (isNaN(hours) || isNaN(minutes)) return null;
     
     return hours * 60 + minutes;
-} 
+}
+
+// 商品分类分析
+function analyzeProductCategories(results) {
+    console.log("开始商品分类分析...");
+    
+    // 创建分析结果对象
+    productCategoryAnalysis = {};
+    
+    // 遍历所有匹配结果
+    results.forEach(result => {
+        if (!result.matched || !result.anchor) return; // 跳过未匹配的结果或无主播信息的结果
+        
+        const anchorName = result.anchor.trim();
+        const saleInfo = extractSaleInfo(result.sale);
+        const productName = saleInfo.product || '';
+        const price = parseFloat(saleInfo.price) || 0;
+        
+        // 如果这个主播还没有数据，初始化
+        if (!productCategoryAnalysis[anchorName]) {
+            productCategoryAnalysis[anchorName] = {
+                '源悦': 0,
+                '莼悦': 0,
+                '旺玥': 0,
+                '皇家': 0
+            };
+        }
+        
+        // 根据商品名称分类
+        if (productName.includes('源悦')) {
+            productCategoryAnalysis[anchorName]['源悦'] += price;
+        } else if (productName.includes('莼悦')) {
+            productCategoryAnalysis[anchorName]['莼悦'] += price;
+        } else if (productName.includes('旺玥')) {
+            productCategoryAnalysis[anchorName]['旺玥'] += price;
+        } else if (productName.includes('皇家') && !productName.includes('旺玥') && !productName.includes('莼悦')) {
+            productCategoryAnalysis[anchorName]['皇家'] += price;
+        }
+    });
+    
+    // 输出分析结果到控制台
+    console.log("商品分类分析结果:", productCategoryAnalysis);
+    
+    // 在数据分析选项卡中显示结果
+    displayProductCategoryAnalysis();
+    
+    return productCategoryAnalysis;
+}
+
+// 显示商品分类分析结果
+function displayProductCategoryAnalysis() {
+    const analysisTab = document.getElementById('analysis');
+    if (!analysisTab) {
+        console.error("找不到显示分析结果的选项卡");
+        return;
+    }
+    
+    // 查找分析选项卡中的内容容器
+    const cardBody = analysisTab.querySelector('.card-body');
+    if (!cardBody) {
+        console.error("找不到分析选项卡的内容容器");
+        return;
+    }
+    
+    // 查找或创建显示分类分析的容器
+    let categoryContainer = document.getElementById('product-category-analysis');
+    if (!categoryContainer) {
+        // 创建新的行和列结构
+        const newRow = document.createElement('div');
+        newRow.className = 'row mb-4';
+        
+        const newCol = document.createElement('div');
+        newCol.className = 'col-md-12';
+        
+        categoryContainer = document.createElement('div');
+        categoryContainer.id = 'product-category-analysis';
+        
+        newCol.appendChild(categoryContainer);
+        newRow.appendChild(newCol);
+        
+        // 在第一个图表行之前插入新行
+        const existingRow = cardBody.querySelector('.row');
+        if (existingRow) {
+            cardBody.insertBefore(newRow, existingRow);
+        } else {
+            cardBody.appendChild(newRow);
+        }
+    }
+    
+    // 创建内容 - 使用更美观的卡片设计
+    let html = `
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-bar-chart-fill me-2"></i>各主播商品类别销售额分析
+            </h5>
+        </div>
+        <div class="card-body p-0">
+    `;
+    
+    // 如果没有数据
+    if (Object.keys(productCategoryAnalysis).length === 0) {
+        html += `
+        <div class="p-4">
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <div>无可用数据进行商品分类分析</div>
+            </div>
+        </div>`;
+    } else {
+        // 创建表格 - 改进样式
+        html += `
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr class="bg-light">
+                            <th class="py-3 px-4 text-center border-bottom border-primary" style="min-width: 100px;">主播</th>
+                            <th class="py-3 px-4 text-center border-bottom" style="color: #4e73df;">源悦类</th>
+                            <th class="py-3 px-4 text-center border-bottom" style="color: #1cc88a;">莼悦类</th>
+                            <th class="py-3 px-4 text-center border-bottom" style="color: #f6c23e;">旺玥类</th>
+                            <th class="py-3 px-4 text-center border-bottom" style="color: #e74a3b;">皇家类</th>
+                            <th class="py-3 px-4 text-center border-bottom border-primary" style="color: #36b9cc; min-width: 120px;">总计</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // 计算总销售额
+        let totalSourceSales = 0;
+        let totalChunSales = 0; 
+        let totalWangSales = 0;
+        let totalRoyalSales = 0;
+        let grandTotal = 0;
+        
+        // 为每个主播添加一行 - 改进样式
+        Object.entries(productCategoryAnalysis).forEach(([anchor, categories], index) => {
+            const total = categories['源悦'] + categories['莼悦'] + categories['旺玥'] + categories['皇家'];
+            
+            // 累加总销售额
+            totalSourceSales += categories['源悦'];
+            totalChunSales += categories['莼悦'];
+            totalWangSales += categories['旺玥'];
+            totalRoyalSales += categories['皇家'];
+            grandTotal += total;
+            
+            // 格式化数字显示
+            const formatNumber = num => {
+                return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+            };
+            
+            const rowClass = index % 2 === 0 ? '' : 'bg-light-subtle';
+            
+            html += `
+                <tr class="${rowClass} hover-effect">
+                    <td class="py-3 px-4 text-center fw-bold text-primary">${anchor}</td>
+                    <td class="py-3 px-4 text-center" style="position: relative;">
+                        <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 w-100">
+                            ¥ ${formatNumber(categories['源悦'])}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center" style="position: relative;">
+                        <span class="badge rounded-pill bg-success bg-opacity-10 text-success px-3 py-2 w-100">
+                            ¥ ${formatNumber(categories['莼悦'])}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center" style="position: relative;">
+                        <span class="badge rounded-pill bg-warning bg-opacity-10 text-warning px-3 py-2 w-100">
+                            ¥ ${formatNumber(categories['旺玥'])}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center" style="position: relative;">
+                        <span class="badge rounded-pill bg-danger bg-opacity-10 text-danger px-3 py-2 w-100">
+                            ¥ ${formatNumber(categories['皇家'])}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center fw-bold text-primary" style="position: relative;">
+                        <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-3 py-2 w-100 fs-6">
+                            ¥ ${formatNumber(total)}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        // 添加总计行
+        html += `
+            <tr class="bg-light">
+                <td class="py-3 px-4 text-center fw-bold text-dark border-top border-2">总计</td>
+                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                    <span class="badge rounded-pill bg-primary px-3 py-2 w-100 text-white">
+                        ¥ ${totalSourceSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                </td>
+                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                    <span class="badge rounded-pill bg-success px-3 py-2 w-100 text-white">
+                        ¥ ${totalChunSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                </td>
+                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                    <span class="badge rounded-pill bg-warning px-3 py-2 w-100 text-white">
+                        ¥ ${totalWangSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                </td>
+                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                    <span class="badge rounded-pill bg-danger px-3 py-2 w-100 text-white">
+                        ¥ ${totalRoyalSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                </td>
+                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                    <span class="badge rounded-pill bg-dark px-3 py-2 w-100 text-white fs-6">
+                        ¥ ${grandTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                    </span>
+                </td>
+            </tr>
+        `;
+        
+        html += '</tbody></table></div>';
+    }
+    
+    html += '</div></div>';
+    
+    // 添加自定义CSS样式
+    const styleId = 'product-category-analysis-styles';
+    if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+            .hover-effect:hover {
+                background-color: rgba(13, 110, 253, 0.05) !important;
+                transition: background-color 0.3s ease;
+            }
+            #product-category-analysis .table {
+                border-collapse: separate;
+                border-spacing: 0;
+            }
+            #product-category-analysis .badge {
+                font-weight: 500;
+                font-size: 0.9rem;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // 更新分析结果容器
+    categoryContainer.innerHTML = html;
+}
