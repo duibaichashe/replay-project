@@ -1316,7 +1316,7 @@ function displayResults(results) {
     
     // 如果没有结果，显示提示
     if (results.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="text-center">未找到匹配结果</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">未找到匹配结果</td></tr>';
         resultsSection.classList.remove('d-none');
         return;
     }
@@ -1476,6 +1476,9 @@ function createPagination(totalItems) {
         
         paginationDiv.innerHTML = `
             <div class="btn-group">
+                <button id="home-page" class="btn btn-outline-primary" disabled>
+                    <i class="bi bi-house-door"></i> 首页
+                </button>
                 <button id="prev-page" class="btn btn-outline-primary" disabled>
                     <i class="bi bi-chevron-left"></i> 上一页
                 </button>
@@ -1501,6 +1504,14 @@ function createPagination(totalItems) {
         } else {
             matchingDiv.appendChild(paginationDiv);
         }
+        
+        // 添加首页按钮事件监听器
+        document.getElementById('home-page').addEventListener('click', function() {
+            if (currentPage > 1) {
+                currentPage = 1;
+                displayResultsPage(matchedResults, currentPage);
+            }
+        });
         
         // 添加事件监听器
         document.getElementById('prev-page').addEventListener('click', function() {
@@ -1559,16 +1570,20 @@ function createPagination(totalItems) {
         currentPage = pageNum;
         displayResultsPage(matchedResults, currentPage);
         
-        // 清空输入框
-        pageInput.value = '';
+        // 不再清空输入框，保留用户输入的值
     }
 }
 
 // 更新分页按钮状态
 function updatePaginationButtons(currentPage, totalPages) {
+    const homeButton = document.getElementById('home-page');
     const prevButton = document.getElementById('prev-page');
     const nextButton = document.getElementById('next-page');
     const pageInfo = document.getElementById('pagination-info');
+    
+    if (homeButton) {
+        homeButton.disabled = currentPage <= 1;
+    }
     
     if (prevButton) {
         prevButton.disabled = currentPage <= 1;
