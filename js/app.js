@@ -25,6 +25,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // 初始化拖放区域
     initializeDropZones();
     
+    // 修复模态框ARIA属性问题
+    fixModalAriaAttributes();
+    
     // 为文件输入框元素添加事件监听
     if (salesFileInput) {
         salesFileInput.addEventListener('change', handleFileSelect);
@@ -40,25 +43,21 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('未找到排班表文件输入框元素');
     }
     
-    // 初始化分析按钮
+    // 绑定按钮事件
     if (analyzeBtn) {
         analyzeBtn.addEventListener('click', startAnalysis);
         console.log('已为分析按钮添加事件监听器');
     }
     
-    // 初始化清除按钮
     if (clearBtn) {
         clearBtn.addEventListener('click', clearData);
         console.log('已为清除按钮添加事件监听器');
     }
     
-    // 初始化导出按钮
     if (exportBtn) {
         exportBtn.addEventListener('click', exportResults);
         console.log('已为导出按钮添加事件监听器');
     }
-    
-    console.log('初始化完成');
 });
 
 // 初始化拖放区域和文件选择按钮
@@ -2399,16 +2398,40 @@ function createAnchorCategoryCharts(anchorName) {
             return;
         }
         
+        // 确保模态框没有aria-hidden属性 (防止无障碍问题)
+        modalElement.removeAttribute('aria-hidden');
+        
         // 创建Bootstrap模态框实例
-        const modal = new bootstrap.Modal(modalElement);
+        let modal = null;
+        try {
+            modal = new bootstrap.Modal(modalElement, {
+                backdrop: 'static',
+                keyboard: false,
+                focus: true  // 确保模态框获得焦点
+            });
+        } catch (error) {
+            console.error('创建模态框实例失败:', error);
+            return;
+        }
+        
+        // 保存当前激活的元素，用于模态框关闭后恢复焦点
+        const activeElement = document.activeElement;
         
         // 处理模态框显示前事件
-        modalElement.addEventListener('show.bs.modal', function () {
+        const showHandler = function () {
             console.log('模态框正在显示');
-        }, { once: true });
+            
+            // 移除所有可聚焦元素的负tabindex
+            const focusableElements = modalElement.querySelectorAll('button, [href], input, select, textarea, [tabindex="-1"]');
+            focusableElements.forEach(el => {
+                if (el.getAttribute('tabindex') === '-1') {
+                    el.removeAttribute('tabindex');
+                }
+            });
+        };
         
         // 处理模态框完全显示后事件
-        modalElement.addEventListener('shown.bs.modal', function () {
+        const shownHandler = function () {
             console.log('模态框已完全显示，现在创建图表');
             
             // 获取图表canvas
@@ -2471,10 +2494,16 @@ function createAnchorCategoryCharts(anchorName) {
             } catch (err) {
                 console.error('创建主播类目销售分析饼图失败:', err);
             }
-        });
+            
+            // 将焦点设置到模态框中的第一个按钮上
+            const firstButton = modalElement.querySelector('button');
+            if (firstButton) {
+                firstButton.focus();
+            }
+        };
         
         // 处理模态框隐藏前事件
-        modalElement.addEventListener('hide.bs.modal', function () {
+        const hideHandler = function () {
             console.log('模态框正在隐藏');
             
             // 销毁图表实例
@@ -2486,11 +2515,21 @@ function createAnchorCategoryCharts(anchorName) {
                     console.error('销毁图表实例失败', e);
                 }
             }
-        }, { once: true });
+            
+            // 模态框内的活动元素失去焦点
+            if (document.activeElement && modalElement.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        };
         
         // 处理模态框完全隐藏后事件
-        modalElement.addEventListener('hidden.bs.modal', function () {
+        const hiddenHandler = function () {
             console.log('模态框已完全隐藏，现在刷新页面图表');
+            
+            // 恢复焦点到之前的元素
+            if (activeElement) {
+                activeElement.focus();
+            }
             
             // 重新初始化页面上的其他图表
             setTimeout(function() {
@@ -2508,7 +2547,19 @@ function createAnchorCategoryCharts(anchorName) {
                     console.error("重新初始化图表失败:", e);
                 }
             }, 100);
-        }, { once: true });
+            
+            // 移除所有事件监听器
+            modalElement.removeEventListener('show.bs.modal', showHandler);
+            modalElement.removeEventListener('shown.bs.modal', shownHandler);
+            modalElement.removeEventListener('hide.bs.modal', hideHandler);
+            modalElement.removeEventListener('hidden.bs.modal', hiddenHandler);
+        };
+        
+        // 添加所有事件监听器
+        modalElement.addEventListener('show.bs.modal', showHandler);
+        modalElement.addEventListener('shown.bs.modal', shownHandler);
+        modalElement.addEventListener('hide.bs.modal', hideHandler);
+        modalElement.addEventListener('hidden.bs.modal', hiddenHandler);
         
         // 显示模态框
         modal.show();
@@ -3060,4 +3111,71 @@ function generateAISuggestions(results) {
         </ul>
         <p>请查看"AI建议"选项卡获取更详细的分析和主播个性化建议。</p>
     `;
+}
+
+// 修复模态框ARIA属性问题
+function fixModalAriaAttributes() {
+    // 获取所有模态框元素
+    const modalElements = document.querySelectorAll('.modal');
+    
+    modalElements.forEach(modal => {
+        // 保存原始焦点元素
+        let previouslyFocusedElement = null;
+        
+        // 监听模态框显示前事件
+        modal.addEventListener('show.bs.modal', function() {
+            // 保存当前焦点元素
+            previouslyFocusedElement = document.activeElement;
+            
+            // 移除aria-hidden属性 - 这个属性导致了问题
+            modal.removeAttribute('aria-hidden');
+            
+            // 确保模态框内的按钮可聚焦
+            const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            focusableElements.forEach(el => {
+                if (el.hasAttribute('tabindex') && el.getAttribute('tabindex') === '-1') {
+                    el.removeAttribute('tabindex');
+                }
+            });
+        });
+        
+        // 监听模态框显示后事件
+        modal.addEventListener('shown.bs.modal', function() {
+            // 在模态框显示后，将焦点设置在第一个可聚焦元素上
+            const firstFocusable = modal.querySelector('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+            if (firstFocusable) {
+                firstFocusable.focus();
+            }
+        });
+        
+        // 监听模态框隐藏前事件
+        modal.addEventListener('hide.bs.modal', function() {
+            // 在模态框隐藏前，清除内部元素的焦点
+            if (document.activeElement && modal.contains(document.activeElement)) {
+                document.activeElement.blur();
+            }
+        });
+        
+        // 监听模态框隐藏后事件
+        modal.addEventListener('hidden.bs.modal', function() {
+            // 恢复原始焦点
+            if (previouslyFocusedElement) {
+                previouslyFocusedElement.focus();
+                previouslyFocusedElement = null;
+            }
+            
+            // 使用较短的延迟，确保在Bootstrap过渡完成后执行
+            setTimeout(() => {
+                if (!modal.classList.contains('show')) {
+                    // 使用inert属性代替aria-hidden
+                    // 但由于inert属性可能不被所有浏览器支持，我们仍然设置aria-hidden，但确保没有焦点问题
+                    if ('inert' in HTMLElement.prototype) {
+                        modal.inert = true;
+                    } else {
+                        modal.setAttribute('aria-hidden', 'true');
+                    }
+                }
+            }, 100); // 缩短延迟时间
+        });
+    });
 }
