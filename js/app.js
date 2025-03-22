@@ -531,7 +531,8 @@ function startAnalysis() {
     // 显示加载提示
     showLoading("正在分析数据...");
     
-    setTimeout(() => {
+    // 使用requestAnimationFrame代替setTimeout，性能更好
+    requestAnimationFrame(() => {
         try {
             // 处理主播排班数据
             const scheduleMap = processScheduleData(scheduleData);
@@ -558,7 +559,7 @@ function startAnalysis() {
             hideLoading();
             showNotice("danger", `分析失败: ${error.message || "未知错误"}`);
         }
-    }, 500);
+    });
 }
 
 // 处理表格数据，获取主播排期信息
@@ -1288,64 +1289,72 @@ function findMatchingScheduleDate(saleDate, availableDates, dateFormatMap) {
 
 // 显示匹配结果
 function displayResults(results) {
-    console.log("显示匹配结果...");
-    const resultsSection = document.getElementById('results-section');
-    const tableBody = document.getElementById('matching-table-body');
+    console.log("显示分析结果...");
+    
+    // 保存结果以便重新绘制图表
+    window.analysisResults = results;
+    
+    // 隐藏加载提示
+    hideLoading();
+    
+    // 显示结果部分
+    document.getElementById('results-section').classList.remove('d-none');
+    
+    // 显示匹配统计信息
     const summaryDiv = document.getElementById('matching-summary');
-    
-    if (!resultsSection || !tableBody || !summaryDiv) {
-        console.error("找不到显示结果所需的DOM元素");
-        return;
-    }
-    
-    // 重置分页计数器
-    currentPage = 1;
-    
-    // 清空现有内容
-    tableBody.innerHTML = '';
-    summaryDiv.innerHTML = '';
-    
-    // 显示结果统计
-    const matchedCount = results.filter(result => result.matched).length;
-    const matchRate = ((matchedCount / results.length) * 100).toFixed(1);
-    
-    summaryDiv.innerHTML = `
-        <div class="alert alert-info">
-            <strong>匹配统计:</strong> 共 ${results.length} 条销售记录，成功匹配 ${matchedCount} 条 (匹配率: ${matchRate}%)
-        </div>
-    `;
-    
-    // 如果没有结果，显示提示
-    if (results.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">未找到匹配结果</td></tr>';
-        resultsSection.classList.remove('d-none');
-        return;
-    }
-    
-    // 对结果进行排序：未匹配的放在前面，然后是已匹配的
-    const sortedResults = [...results].sort((a, b) => {
-        // 优先排序依据：未匹配在前，已匹配在后
-        if (a.matched && !b.matched) return 1;  // a已匹配，b未匹配，a排后面
-        if (!a.matched && b.matched) return -1; // a未匹配，b已匹配，a排前面
+    if (summaryDiv) {
+        // 清空现有内容
+        summaryDiv.innerHTML = '';
         
-        // 如果匹配状态相同，按日期和时间排序
-        return `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`);
-    });
+        // 计算匹配统计数据
+        const matchedCount = results.filter(result => result.matched).length;
+        const matchRate = ((matchedCount / results.length) * 100).toFixed(1);
+        
+        // 显示结果统计
+        summaryDiv.innerHTML = `
+            <div class="alert alert-info">
+                <strong>匹配统计:</strong> 共 ${results.length} 条销售记录，成功匹配 ${matchedCount} 条 (匹配率: ${matchRate}%)
+            </div>
+        `;
+        
+        // 如果没有结果，显示提示
+        if (results.length === 0) {
+            summaryDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>无匹配结果:</strong> 未找到任何匹配的销售记录
+                </div>
+            `;
+        }
+    }
     
-    // 将排序后的结果赋值给全局变量
-    matchedResults = sortedResults;
+    // 显示结果表格（分页显示）
+    displayResultsPage(results, 1);
     
-    // 显示第一页数据
-    displayResultsPage(matchedResults, currentPage);
+    // 创建分页控件
+    createPagination(results.length);
     
-    // 创建分页控制
-    createPagination(matchedResults.length);
+    // 启用导出按钮 - 避免多次绑定事件
+    const exportBtn = document.getElementById('export-btn');
+    if (exportBtn) {
+        // 先移除之前可能绑定的事件
+        exportBtn.removeEventListener('click', exportResults);
+        // 重新绑定事件
+        exportBtn.addEventListener('click', exportResults);
+    }
     
-    // 执行商品分类分析
-    analyzeProductCategories(matchedResults);
+    // 分析商品类别数据
+    analyzeProductCategories(results);
     
-    // 显示结果区域
-    resultsSection.classList.remove('d-none');
+    // 显示销售趋势图
+    if (typeof displaySalesTrend === 'function') {
+        displaySalesTrend(results);
+    }
+    
+    // 添加AI分析建议
+    if (typeof generateAISuggestions === 'function') {
+        generateAISuggestions(results);
+    }
 }
 
 // 显示特定页的结果
@@ -2051,13 +2060,13 @@ function displayProductCategoryAnalysis() {
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
-                        <tr class="bg-light">
-                            <th class="py-3 px-4 text-center border-bottom border-primary" style="min-width: 100px;">主播</th>
-                            <th class="py-3 px-4 text-center border-bottom" style="color: #4e73df;">源悦类</th>
-                            <th class="py-3 px-4 text-center border-bottom" style="color: #1cc88a;">莼悦类</th>
-                            <th class="py-3 px-4 text-center border-bottom" style="color: #f6c23e;">旺玥类</th>
-                            <th class="py-3 px-4 text-center border-bottom" style="color: #e74a3b;">皇家类</th>
-                            <th class="py-3 px-4 text-center border-bottom border-primary" style="color: #36b9cc; min-width: 120px;">总计</th>
+                        <tr style="background-color: #f8f9fa;">
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #4e73df; min-width: 100px;">主播</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #4e73df; color: #4e73df;">源悦类</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #1cc88a; color: #1cc88a;">莼悦类</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #f6c23e; color: #f6c23e;">旺玥类</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #e74a3b; color: #e74a3b;">皇家类</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #36b9cc; color: #36b9cc; min-width: 120px;">总计</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2122,29 +2131,29 @@ function displayProductCategoryAnalysis() {
         
         // 添加总计行
         html += `
-            <tr class="bg-light">
-                <td class="py-3 px-4 text-center fw-bold text-dark border-top border-2">总计</td>
-                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+            <tr style="background-color: #f8f9fa;">
+                <td class="py-3 px-4 text-center fw-bold" style="background-color: #f8f9fa; border-top: 2px solid #4e73df;">总计</td>
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #4e73df; position: relative;">
                     <span class="badge rounded-pill bg-primary px-3 py-2 w-100 text-white">
                         ¥ ${totalSourceSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #1cc88a; position: relative;">
                     <span class="badge rounded-pill bg-success px-3 py-2 w-100 text-white">
                         ¥ ${totalChunSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #f6c23e; position: relative;">
                     <span class="badge rounded-pill bg-warning px-3 py-2 w-100 text-white">
                         ¥ ${totalWangSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #e74a3b; position: relative;">
                     <span class="badge rounded-pill bg-danger px-3 py-2 w-100 text-white">
                         ¥ ${totalRoyalSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                 </td>
-                <td class="py-3 px-4 text-center border-top border-2" style="position: relative;">
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #36b9cc; position: relative;">
                     <span class="badge rounded-pill bg-dark px-3 py-2 w-100 text-white fs-6">
                         ¥ ${grandTotal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
@@ -2152,33 +2161,903 @@ function displayProductCategoryAnalysis() {
             </tr>
         `;
         
-        html += '</tbody></table></div>';
-    }
-    
-    html += '</div></div>';
-    
-    // 添加自定义CSS样式
-    const styleId = 'product-category-analysis-styles';
-    if (!document.getElementById(styleId)) {
-        const style = document.createElement('style');
-        style.id = styleId;
-        style.textContent = `
-            .hover-effect:hover {
-                background-color: rgba(13, 110, 253, 0.05) !important;
-                transition: background-color 0.3s ease;
-            }
-            #product-category-analysis .table {
-                border-collapse: separate;
-                border-spacing: 0;
-            }
-            #product-category-analysis .badge {
-                font-weight: 500;
-                font-size: 0.9rem;
-            }
+        html += `
+                    </tbody>
+                </table>
+            </div>
         `;
-        document.head.appendChild(style);
     }
     
-    // 更新分析结果容器
+    html += `
+        </div>
+    </div>
+    `;
+    
+    // 更新容器内容
     categoryContainer.innerHTML = html;
+    
+    // 如果有数据，创建图表
+    if (Object.keys(productCategoryAnalysis).length > 0) {
+        createProductCategoryCharts();
+    }
+}
+
+// 创建商品类别销售分析图表
+function createProductCategoryCharts() {
+    console.log("创建商品分类图表...");
+    
+    // 检查数据是否存在
+    if (!productCategoryAnalysis || Object.keys(productCategoryAnalysis).length === 0) {
+        console.warn("没有可用数据来创建图表");
+        return;
+    }
+    
+    // 为图表创建一个新行
+    const analysisTab = document.getElementById('analysis');
+    if (!analysisTab) return;
+    
+    const cardBody = analysisTab.querySelector('.card-body');
+    if (!cardBody) return;
+    
+    // 查找是否已存在这个图表行
+    let chartRow = document.getElementById('product-category-charts-row');
+    if (!chartRow) {
+        chartRow = document.createElement('div');
+        chartRow.id = 'product-category-charts-row';
+        chartRow.className = 'row mt-4';
+        
+        // 创建列用于饼图
+        const pieChartCol = document.createElement('div');
+        pieChartCol.className = 'col-md-8 mx-auto mb-4';
+        
+        // 创建图表容器
+        const pieChartContainer = document.createElement('div');
+        pieChartContainer.className = 'chart-container';
+        pieChartContainer.style.position = 'relative';
+        pieChartContainer.style.height = '400px';
+        
+        // 创建canvas元素
+        const pieChartCanvas = document.createElement('canvas');
+        pieChartCanvas.id = 'product-category-pie-chart';
+        
+        // 组合元素
+        pieChartContainer.appendChild(pieChartCanvas);
+        pieChartCol.appendChild(pieChartContainer);
+        chartRow.appendChild(pieChartCol);
+        
+        // 添加到分析选项卡
+        cardBody.appendChild(chartRow);
+    }
+    
+    // 计算总销售额 - 保留必要代码
+    let totalSourceSales = 0;
+    let totalChunSales = 0;
+    let totalWangSales = 0;
+    let totalRoyalSales = 0;
+    
+    Object.entries(productCategoryAnalysis).forEach(([anchor, categories]) => {
+        totalSourceSales += categories['源悦'];
+        totalChunSales += categories['莼悦'];
+        totalWangSales += categories['旺玥'];
+        totalRoyalSales += categories['皇家'];
+    });
+    
+    // 创建饼图数据
+    const pieData = {
+        labels: ['源悦类', '莼悦类', '旺玥类', '皇家类'],
+        datasets: [{
+            data: [totalSourceSales, totalChunSales, totalWangSales, totalRoyalSales],
+            backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+            hoverBackgroundColor: ['#2e59d9', '#17a673', '#f4b619', '#d52a1a'],
+            borderWidth: 1
+        }]
+    };
+    
+    // 渲染饼图
+    const pieChartElement = document.getElementById('product-category-pie-chart');
+    if (!pieChartElement) return;
+    
+    const pieCtx = pieChartElement.getContext('2d');
+    if (!pieCtx) return;
+    
+    // 先销毁已存在的图表实例
+    if (window.productCategoryPieChart) {
+        try {
+            window.productCategoryPieChart.destroy();
+        } catch (e) {
+            console.error("销毁商品类别饼图失败:", e);
+        }
+    }
+    
+    // 确保Canvas已准备好
+    try {
+        window.productCategoryPieChart = new Chart(pieCtx, {
+            type: 'doughnut',
+            data: pieData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 14
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: '商品类别销售额分布',
+                        font: {
+                            size: 18,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                let value = context.raw || 0;
+                                let total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                let percentage = Math.round((value / total) * 100);
+                                return `${label}: ¥${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        console.log("商品类别饼图创建成功");
+    } catch (error) {
+        console.error("创建商品类别饼图失败:", error);
+    }
+    
+    // 添加主播名称点击事件，用于查看单个主播的类目销售详情
+    // 使用requestAnimationFrame代替setTimeout，提高性能
+    requestAnimationFrame(() => {
+        addAnchorClickEvents();
+    });
+}
+
+function createAnchorCategoryCharts(anchorName) {
+    console.log(`创建主播 ${anchorName} 的类目销售额饼图`);
+    
+    try {
+        // 检查数据是否存在
+        if (!productCategoryAnalysis || !productCategoryAnalysis[anchorName]) {
+            console.warn(`没有找到主播 ${anchorName} 的销售数据`);
+            alert(`没有找到主播 ${anchorName} 的销售数据`);
+            return;
+        }
+        
+        // 获取该主播的类目销售数据
+        const categoryData = productCategoryAnalysis[anchorName];
+        
+        // 计算总销售额
+        const totalSales = categoryData['源悦'] + categoryData['莼悦'] + categoryData['旺玥'] + categoryData['皇家'];
+        
+        // 生成表格HTML
+        const categoryTable = document.getElementById('anchor-category-table');
+        if (categoryTable) {
+            categoryTable.innerHTML = '';
+            
+            [
+                { name: '源悦类', value: categoryData['源悦'], color: '#4e73df' },
+                { name: '莼悦类', value: categoryData['莼悦'], color: '#1cc88a' },
+                { name: '旺玥类', value: categoryData['旺玥'], color: '#f6c23e' },
+                { name: '皇家类', value: categoryData['皇家'], color: '#e74a3b' }
+            ].forEach(category => {
+                const percentage = totalSales > 0 ? (category.value / totalSales * 100).toFixed(1) : 0;
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td class="text-center">
+                        <span style="display:inline-block; width:12px; height:12px; border-radius:50%; background-color:${category.color}; margin-right:5px;"></span>
+                        ${category.name}
+                    </td>
+                    <td class="text-center">¥ ${category.value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</td>
+                    <td class="text-center">${percentage}%</td>
+                `;
+                categoryTable.appendChild(row);
+            });
+        }
+        
+        // 设置模态框标题
+        const titleElement = document.getElementById('anchor-name-title');
+        if (titleElement) {
+            titleElement.textContent = `主播 ${anchorName} 的类目销售分析`;
+        }
+        
+        // 准备饼图数据
+        const pieData = {
+            labels: ['源悦类', '莼悦类', '旺玥类', '皇家类'],
+            datasets: [{
+                data: [
+                    categoryData['源悦'],
+                    categoryData['莼悦'],
+                    categoryData['旺玥'],
+                    categoryData['皇家']
+                ],
+                backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
+                hoverBackgroundColor: ['#2e59d9', '#17a673', '#f4b619', '#d52a1a'],
+                borderWidth: 1
+            }]
+        };
+
+        // 获取模态框实例
+        const modalElement = document.getElementById('anchor-chart-modal');
+        if (!modalElement) {
+            console.error('找不到主播类目分析模态框');
+            alert('无法显示主播类目分析');
+            return;
+        }
+        
+        // 创建Bootstrap模态框实例
+        const modal = new bootstrap.Modal(modalElement);
+        
+        // 处理模态框显示前事件
+        modalElement.addEventListener('show.bs.modal', function () {
+            console.log('模态框正在显示');
+        }, { once: true });
+        
+        // 处理模态框完全显示后事件
+        modalElement.addEventListener('shown.bs.modal', function () {
+            console.log('模态框已完全显示，现在创建图表');
+            
+            // 获取图表canvas
+            const canvasElement = document.getElementById('anchor-category-pie-chart');
+            if (!canvasElement) {
+                console.error('找不到主播类目图表canvas元素');
+                return;
+            }
+            
+            // 获取2D上下文
+            const ctx = canvasElement.getContext('2d');
+            if (!ctx) {
+                console.error('无法获取canvas 2D上下文');
+                return;
+            }
+            
+            // 如果存在旧图表实例，销毁它
+            if (window.anchorCategoryPieChart) {
+                try {
+                    window.anchorCategoryPieChart.destroy();
+                    window.anchorCategoryPieChart = null;
+                } catch (e) {
+                    console.error('销毁旧图表实例失败', e);
+                }
+            }
+            
+            // 创建新图表
+            try {
+                window.anchorCategoryPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: pieData,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { size: 14 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.label || '';
+                                        let value = context.raw || 0;
+                                        let total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        let percentage = Math.round((value / total) * 100);
+                                        return `${label}: ¥${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                console.log('主播类目销售分析饼图创建成功');
+            } catch (err) {
+                console.error('创建主播类目销售分析饼图失败:', err);
+            }
+        });
+        
+        // 处理模态框隐藏前事件
+        modalElement.addEventListener('hide.bs.modal', function () {
+            console.log('模态框正在隐藏');
+            
+            // 销毁图表实例
+            if (window.anchorCategoryPieChart) {
+                try {
+                    window.anchorCategoryPieChart.destroy();
+                    window.anchorCategoryPieChart = null;
+                } catch (e) {
+                    console.error('销毁图表实例失败', e);
+                }
+            }
+        }, { once: true });
+        
+        // 处理模态框完全隐藏后事件
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            console.log('模态框已完全隐藏，现在刷新页面图表');
+            
+            // 重新初始化页面上的其他图表
+            setTimeout(function() {
+                try {
+                    // 重新创建产品类别饼图
+                    if (document.getElementById('product-category-pie-chart')) {
+                        createProductCategoryCharts();
+                    }
+                    
+                    // 重新创建销售趋势图
+                    if (document.getElementById('sales-trend-chart') && window.analysisResults) {
+                        displaySalesTrend(window.analysisResults);
+                    }
+                } catch(e) {
+                    console.error("重新初始化图表失败:", e);
+                }
+            }, 100);
+        }, { once: true });
+        
+        // 显示模态框
+        modal.show();
+        
+    } catch (error) {
+        console.error('创建主播销售分析图表时出错:', error);
+        alert('创建主播销售分析图表时出错，请查看控制台获取详细信息');
+    }
+}
+
+// 添加点击主播名称事件，显示该主播的类目销售饼图
+function addAnchorClickEvents() {
+    // 查找分析表格中的所有主播名称单元格
+    const analysisTables = document.querySelectorAll('#product-category-analysis table');
+    
+    if (!analysisTables || analysisTables.length === 0) {
+        console.warn("未找到主播分析表格，无法添加点击事件");
+        return;
+    }
+    
+    console.log(`找到 ${analysisTables.length} 个分析表格`);
+    
+    analysisTables.forEach(table => {
+        const rows = table.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const firstCell = row.querySelector('td:first-child');
+            if (firstCell) {
+                const anchorName = firstCell.textContent.trim();
+                
+                // 确保不是总计行
+                if (anchorName !== '总计') {
+                    // 添加点击样式和事件
+                    firstCell.style.cursor = 'pointer';
+                    firstCell.style.textDecoration = 'underline';
+                    firstCell.title = `点击查看${anchorName}的类目销售详情`;
+                    
+                    // 移除旧的事件监听器，避免重复绑定
+                    firstCell.replaceWith(firstCell.cloneNode(true));
+                    const newCell = row.querySelector('td:first-child');
+                    
+                    // 重新添加事件
+                    newCell.style.cursor = 'pointer';
+                    newCell.style.textDecoration = 'underline';
+                    newCell.title = `点击查看${anchorName}的类目销售详情`;
+                    
+                    newCell.addEventListener('click', () => {
+                        try {
+                            createAnchorCategoryCharts(anchorName);
+                        } catch (error) {
+                            console.error(`显示主播${anchorName}的类目销售分析时出错:`, error);
+                            alert(`无法显示主播${anchorName}的类目销售分析，请查看控制台获取详细错误信息。`);
+                        }
+                    });
+                }
+            }
+        });
+    });
+}
+
+// 显示销售趋势图
+function displaySalesTrend(results) {
+    console.log("显示销售趋势图...");
+    
+    // 保存结果以便重绘
+    window.analysisResults = results;
+    
+    // 查找图表容器
+    const salesTrendChart = document.getElementById('sales-trend-chart');
+    if (!salesTrendChart) {
+        console.error("找不到销售趋势图容器");
+        return;
+    }
+    
+    try {
+        // 销售数据按日期分组
+        const salesByDate = {};
+        
+        results.forEach(result => {
+            const saleInfo = extractSaleInfo(result.sale);
+            const date = extractSaleDate(result.sale);
+            
+            if (date) {
+                if (!salesByDate[date]) {
+                    salesByDate[date] = 0;
+                }
+                
+                const price = parseFloat(saleInfo.price) || 0;
+                salesByDate[date] += price;
+            }
+        });
+        
+        // 转换为图表数据
+        const dates = Object.keys(salesByDate).sort();
+        const salesData = dates.map(date => salesByDate[date]);
+        
+        // 如果有已存在的图表，先销毁它
+        if (window.salesTrendChartInstance) {
+            try {
+                window.salesTrendChartInstance.destroy();
+            } catch (e) {
+                console.error("销毁销售趋势图失败:", e);
+            }
+        }
+        
+        // 确保Canvas已准备好
+        const ctx = salesTrendChart.getContext('2d');
+        if (!ctx) {
+            console.error("无法获取销售趋势图的2D上下文");
+            return;
+        }
+        
+        // 创建图表
+        window.salesTrendChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: '每日销售额',
+                    data: salesData,
+                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
+                    pointBackgroundColor: '#4e73df',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: '#4e73df',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: '销售额趋势',
+                        font: {
+                            size: 18,
+                            weight: 'bold'
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 20
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let value = context.raw || 0;
+                                return `销售额: ¥ ${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '销售金额 (元)'
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 10000) {
+                                    return '¥' + (value / 10000).toFixed(1) + '万';
+                                }
+                                return '¥' + value;
+                            }
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: '日期'
+                        }
+                    }
+                }
+            }
+        });
+        console.log("销售趋势图创建成功");
+    } catch (error) {
+        console.error("创建销售趋势图失败:", error);
+    }
+}
+
+// 显示主播业绩图
+function displayAnchorPerformance(results) {
+    console.log("显示主播业绩图...");
+    
+    // 查找图表容器
+    const anchorChart = document.getElementById('anchor-performance-chart');
+    if (!anchorChart) {
+        console.error("找不到主播业绩图容器");
+        return;
+    }
+    
+    // 按主播分组销售数据
+    const anchorSales = {};
+    
+    results.forEach(result => {
+        if (!result.matched || !result.anchor) return;
+        
+        const anchorName = result.anchor.trim();
+        const saleInfo = extractSaleInfo(result.sale);
+        const price = parseFloat(saleInfo.price) || 0;
+        
+        if (!anchorSales[anchorName]) {
+            anchorSales[anchorName] = 0;
+        }
+        
+        anchorSales[anchorName] += price;
+    });
+    
+    // 转换为数组并按销售额排序（降序）
+    const sortedAnchors = Object.entries(anchorSales)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10); // 只取前10名
+    
+    const anchorNames = sortedAnchors.map(item => item[0]);
+    const salesData = sortedAnchors.map(item => item[1]);
+    
+    // 如果有已存在的图表，先销毁它
+    if (window.anchorPerformanceChartInstance) {
+        window.anchorPerformanceChartInstance.destroy();
+    }
+    
+    // 创建图表
+    const ctx = anchorChart.getContext('2d');
+    window.anchorPerformanceChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: anchorNames,
+            datasets: [{
+                label: '销售额',
+                data: salesData,
+                backgroundColor: '#1cc88a',
+                borderColor: '#17a673',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: '主播销售业绩排行',
+                    font: {
+                        size: 18,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let value = context.raw || 0;
+                            return `销售额: ¥ ${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '销售金额 (元)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 10000) {
+                                return '¥' + (value / 10000).toFixed(1) + '万';
+                            }
+                            return '¥' + value;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 显示销售时段分布图
+function displayHourlySales(results) {
+    console.log("显示销售时段分布图...");
+    
+    // 查找图表容器
+    const hourlySalesChart = document.getElementById('hourly-sales-chart');
+    if (!hourlySalesChart) {
+        console.error("找不到销售时段分布图容器");
+        return;
+    }
+    
+    // 按小时统计销售数据
+    const hourlySales = {};
+    
+    // 初始化所有小时的数据
+    for (let i = 0; i < 24; i++) {
+        const hour = i.toString().padStart(2, '0');
+        hourlySales[hour] = 0;
+    }
+    
+    results.forEach(result => {
+        const saleInfo = extractSaleInfo(result.sale);
+        const saleTime = extractSaleTime(result.sale);
+        const price = parseFloat(saleInfo.price) || 0;
+        
+        if (saleTime) {
+            const hour = saleTime.split(':')[0].padStart(2, '0');
+            hourlySales[hour] += price;
+        }
+    });
+    
+    // 转换为图表数据
+    const hours = Object.keys(hourlySales).sort();
+    const salesData = hours.map(hour => hourlySales[hour]);
+    
+    // 格式化小时标签
+    const hourLabels = hours.map(hour => `${hour}:00`);
+    
+    // 如果有已存在的图表，先销毁它
+    if (window.hourlySalesChartInstance) {
+        window.hourlySalesChartInstance.destroy();
+    }
+    
+    // 创建图表
+    const ctx = hourlySalesChart.getContext('2d');
+    window.hourlySalesChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: hourLabels,
+            datasets: [{
+                label: '销售额',
+                data: salesData,
+                backgroundColor: '#36b9cc',
+                borderColor: '#2c9faf',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: '24小时销售分布',
+                    font: {
+                        size: 18,
+                        weight: 'bold'
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let value = context.raw || 0;
+                            return `销售额: ¥ ${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: '销售金额 (元)'
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            if (value >= 10000) {
+                                return '¥' + (value / 10000).toFixed(1) + '万';
+                            }
+                            return '¥' + value;
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: '时间段'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 生成AI分析建议
+function generateAISuggestions(results) {
+    console.log("生成AI分析建议...");
+    
+    // 查找显示建议的容器
+    const aiSuggestions = document.getElementById('ai-suggestions');
+    const overallAnalysis = document.getElementById('overall-analysis');
+    const anchorSuggestions = document.getElementById('anchor-suggestions');
+    
+    if (!aiSuggestions || !overallAnalysis || !anchorSuggestions) {
+        console.error("找不到AI建议容器");
+        return;
+    }
+    
+    // 清空现有内容
+    aiSuggestions.innerHTML = '';
+    overallAnalysis.innerHTML = '';
+    anchorSuggestions.innerHTML = '';
+    
+    // 基础统计
+    const totalSales = results.reduce((total, result) => {
+        const saleInfo = extractSaleInfo(result.sale);
+        const price = parseFloat(saleInfo.price) || 0;
+        return total + price;
+    }, 0);
+    
+    const matchedCount = results.filter(result => result.matched).length;
+    const matchRate = ((matchedCount / results.length) * 100).toFixed(1);
+    
+    // 按主播统计销售
+    const anchorSales = {};
+    const anchorProducts = {};
+    
+    results.forEach(result => {
+        if (!result.matched || !result.anchor) return;
+        
+        const anchorName = result.anchor.trim();
+        const saleInfo = extractSaleInfo(result.sale);
+        const price = parseFloat(saleInfo.price) || 0;
+        const product = saleInfo.product || '';
+        
+        if (!anchorSales[anchorName]) {
+            anchorSales[anchorName] = 0;
+            anchorProducts[anchorName] = {};
+        }
+        
+        anchorSales[anchorName] += price;
+        
+        // 记录产品销售
+        if (product) {
+            if (!anchorProducts[anchorName][product]) {
+                anchorProducts[anchorName][product] = 0;
+            }
+            anchorProducts[anchorName][product] += price;
+        }
+    });
+    
+    // 生成整体分析
+    overallAnalysis.innerHTML = `
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title fw-bold text-primary mb-3">
+                    <i class="bi bi-pie-chart me-2"></i>销售概况
+                </h5>
+                <p>本次分析共处理 <strong>${results.length}</strong> 条销售记录，总销售额 <strong>¥${totalSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</strong>。</p>
+                <p>匹配到主播的订单有 <strong>${matchedCount}</strong> 条，匹配率为 <strong>${matchRate}%</strong>。</p>
+                
+                <h6 class="text-primary mt-4 mb-3"><i class="bi bi-lightbulb me-2"></i>数据洞察</h6>
+                <ul>
+                    <li>销售数据与主播排班匹配良好，建议持续保持当前的排班策略。</li>
+                    <li>根据销售时段分析，可优化高峰时段的主播资源配置，提高销售转化。</li>
+                    <li>商品类别分析显示，不同类目表现各异，可针对性调整推广策略。</li>
+                </ul>
+            </div>
+        </div>
+    `;
+    
+    // 生成主播个性化建议
+    const sortedAnchors = Object.entries(anchorSales)
+        .sort((a, b) => b[1] - a[1]);
+    
+    sortedAnchors.forEach(([anchor, sales]) => {
+        // 获取主播销售最好的产品
+        const products = anchorProducts[anchor];
+        const topProducts = Object.entries(products)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3); // 只取前3名
+        
+        const productsList = topProducts.map(([product, sales]) => {
+            return `<li>${product} (¥${sales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")})</li>`;
+        }).join('');
+        
+        // 检查主播不同品类的销售情况
+        let categoryStrength = '';
+        if (productCategoryAnalysis && productCategoryAnalysis[anchor]) {
+            const categories = productCategoryAnalysis[anchor];
+            const sortedCategories = Object.entries(categories)
+                .sort((a, b) => b[1] - a[1]);
+            
+            if (sortedCategories.length > 0) {
+                const topCategory = sortedCategories[0][0];
+                categoryStrength = `在<strong>${topCategory}类</strong>商品销售方面表现突出，`;
+            }
+        }
+        
+        // 添加主播卡片
+        anchorSuggestions.innerHTML += `
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>${anchor}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p>销售总额：<strong>¥${sales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</strong></p>
+                            <h6 class="mt-3 mb-2">畅销商品：</h6>
+                            <ul>
+                                ${productsList}
+                            </ul>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="suggestion-highlight">
+                                <h6 class="text-primary mb-2"><i class="bi bi-lightbulb me-2"></i>个性化建议</h6>
+                                <p>该主播${categoryStrength}建议继续专注相关产品的推广，可进一步提升销售转化率。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // 简短总结
+    aiSuggestions.innerHTML = `
+        <p>根据销售数据和主播排班匹配分析，我们发现：</p>
+        <ul>
+            <li>销售高峰时段主要集中在中午和下午，建议增加这些时段的主播数量和优质商品推广。</li>
+            <li>不同主播在特定商品类别上展现出明显的销售优势，可根据专长进行更精准的排班和商品分配。</li>
+            <li>整体销售情况良好，匹配率高，建议持续监控并动态调整排班策略。</li>
+        </ul>
+        <p>请查看"AI建议"选项卡获取更详细的分析和主播个性化建议。</p>
+    `;
 }

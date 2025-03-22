@@ -310,6 +310,66 @@ footer {
     border-top: 1px solid var(--border-color);
 }
 
+/* 模态框增强样式 */
+.modal-content {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 1.2rem 1.5rem;
+}
+
+.modal-header .modal-title {
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 1.8rem;
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem 1.5rem;
+}
+
+.modal-backdrop.show {
+    opacity: 0.7;
+}
+
+.chart-container.shadow-sm {
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+}
+
+/* 饼图和图例样式优化 */
+.doughnut-legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 1rem;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.legend-text {
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
     .main-container {
@@ -323,5 +383,13 @@ footer {
     
     .nav-tabs .nav-link {
         padding: 0.75rem 1rem;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-body {
+        padding: 1.2rem;
     }
 } 
