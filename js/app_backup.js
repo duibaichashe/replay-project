@@ -2337,50 +2337,11 @@ function createAnchorCategoryCharts(anchorName) {
             return;
         }
         
-        // 获取模态框元素
-        const modalElement = document.getElementById('anchor-chart-modal');
-        if (!modalElement) {
-            console.error('找不到主播类目分析模态框');
-            alert('无法显示主播类目分析');
-            return;
-        }
-
-        // 销毁现有的图表实例
-        if (window.anchorCategoryPieChart instanceof Chart) {
-            try {
-                window.anchorCategoryPieChart.destroy();
-                console.log('已销毁旧的图表实例');
-            } catch (e) {
-                console.error('销毁旧图表实例失败', e);
-            }
-            window.anchorCategoryPieChart = null;
-        }
-
-        // 强制重置模态框状态
-        const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            try {
-                existingModal.dispose();
-                console.log('已处理旧的模态框实例');
-            } catch (e) {
-                console.error('处理旧模态框实例失败', e);
-            }
-        }
-
-        // 移除旧的事件监听器
-        const oldEvents = ['show.bs.modal', 'shown.bs.modal', 'hide.bs.modal', 'hidden.bs.modal'];
-        oldEvents.forEach(event => {
-            modalElement.removeEventListener(event, window[`modal${event.split('.')[0].charAt(0).toUpperCase() + event.split('.')[0].slice(1)}Handler`]);
-        });
-
-        // 保存当前激活的元素，用于模态框关闭后恢复焦点
-        const activeElement = document.activeElement;
-        
         // 获取该主播的类目销售数据
         const categoryData = productCategoryAnalysis[anchorName];
         
         // 计算总销售额
-        const totalSales = Object.values(categoryData).reduce((sum, value) => sum + value, 0);
+        const totalSales = categoryData['源悦'] + categoryData['莼悦'] + categoryData['旺玥'] + categoryData['皇家'];
         
         // 生成表格HTML
         const categoryTable = document.getElementById('anchor-category-table');
@@ -2388,10 +2349,10 @@ function createAnchorCategoryCharts(anchorName) {
             categoryTable.innerHTML = '';
             
             [
-                { name: '源悦类', value: categoryData['源悦'] || 0, color: '#4e73df' },
-                { name: '莼悦类', value: categoryData['莼悦'] || 0, color: '#1cc88a' },
-                { name: '旺玥类', value: categoryData['旺玥'] || 0, color: '#f6c23e' },
-                { name: '皇家类', value: categoryData['皇家'] || 0, color: '#e74a3b' }
+                { name: '源悦类', value: categoryData['源悦'], color: '#4e73df' },
+                { name: '莼悦类', value: categoryData['莼悦'], color: '#1cc88a' },
+                { name: '旺玥类', value: categoryData['旺玥'], color: '#f6c23e' },
+                { name: '皇家类', value: categoryData['皇家'], color: '#e74a3b' }
             ].forEach(category => {
                 const percentage = totalSales > 0 ? (category.value / totalSales * 100).toFixed(1) : 0;
                 const row = document.createElement('tr');
@@ -2418,10 +2379,10 @@ function createAnchorCategoryCharts(anchorName) {
             labels: ['源悦类', '莼悦类', '旺玥类', '皇家类'],
             datasets: [{
                 data: [
-                    categoryData['源悦'] || 0,
-                    categoryData['莼悦'] || 0,
-                    categoryData['旺玥'] || 0,
-                    categoryData['皇家'] || 0
+                    categoryData['源悦'],
+                    categoryData['莼悦'],
+                    categoryData['旺玥'],
+                    categoryData['皇家']
                 ],
                 backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e', '#e74a3b'],
                 hoverBackgroundColor: ['#2e59d9', '#17a673', '#f4b619', '#d52a1a'],
@@ -2429,31 +2390,25 @@ function createAnchorCategoryCharts(anchorName) {
             }]
         };
 
-        // 确保模态框没有aria-hidden属性
-        modalElement.removeAttribute('aria-hidden');
+        // 获取模态框实例
+        const modalElement = document.getElementById('anchor-chart-modal');
+        if (!modalElement) {
+            console.error('找不到主播类目分析模态框');
+            alert('无法显示主播类目分析');
+            return;
+        }
         
-        // 创建一个新的Bootstrap模态框实例
-        const modal = new bootstrap.Modal(modalElement, {
-            keyboard: true,  // 允许键盘操作
-            focus: true      // 确保模态框获得焦点
-        });
+        // 创建Bootstrap模态框实例
+        const modal = new bootstrap.Modal(modalElement);
         
-        // 定义显示模态框的事件处理程序
-        window.modalShowHandler = function() {
-            console.log('模态框正在显示 (show.bs.modal)');
-            
-            // 确保所有按钮和内容可聚焦
-            const focusableElements = modalElement.querySelectorAll('button, [href], input, select, textarea');
-            focusableElements.forEach(el => {
-                if (el.getAttribute('tabindex') === '-1') {
-                    el.removeAttribute('tabindex');
-                }
-            });
-        };
+        // 处理模态框显示前事件
+        modalElement.addEventListener('show.bs.modal', function () {
+            console.log('模态框正在显示');
+        }, { once: true });
         
-        // 定义模态框完全显示后的事件处理程序
-        window.modalShownHandler = function() {
-            console.log('模态框已完全显示 (shown.bs.modal)');
+        // 处理模态框完全显示后事件
+        modalElement.addEventListener('shown.bs.modal', function () {
+            console.log('模态框已完全显示，现在创建图表');
             
             // 获取图表canvas
             const canvasElement = document.getElementById('anchor-category-pie-chart');
@@ -2467,6 +2422,16 @@ function createAnchorCategoryCharts(anchorName) {
             if (!ctx) {
                 console.error('无法获取canvas 2D上下文');
                 return;
+            }
+            
+            // 如果存在旧图表实例，销毁它
+            if (window.anchorCategoryPieChart) {
+                try {
+                    window.anchorCategoryPieChart.destroy();
+                    window.anchorCategoryPieChart = null;
+                } catch (e) {
+                    console.error('销毁旧图表实例失败', e);
+                }
             }
             
             // 创建新图表
@@ -2493,7 +2458,7 @@ function createAnchorCategoryCharts(anchorName) {
                                         let label = context.label || '';
                                         let value = context.raw || 0;
                                         let total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                        let percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                        let percentage = Math.round((value / total) * 100);
                                         return `${label}: ¥${value.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} (${percentage}%)`;
                                     }
                                 }
@@ -2505,99 +2470,46 @@ function createAnchorCategoryCharts(anchorName) {
             } catch (err) {
                 console.error('创建主播类目销售分析饼图失败:', err);
             }
-            
-            // 将焦点设置到模态框中的关闭按钮上
-            const closeButton = modalElement.querySelector('.btn-close');
-            if (closeButton) {
-                setTimeout(() => {
-                    closeButton.focus();
-                }, 50);
-            }
-        };
+        });
         
-        // 定义模态框开始隐藏时的事件处理程序
-        window.modalHideHandler = function() {
-            console.log('模态框正在隐藏 (hide.bs.modal)');
+        // 处理模态框隐藏前事件
+        modalElement.addEventListener('hide.bs.modal', function () {
+            console.log('模态框正在隐藏');
             
-            // 尝试销毁图表实例
-            if (window.anchorCategoryPieChart instanceof Chart) {
+            // 销毁图表实例
+            if (window.anchorCategoryPieChart) {
                 try {
                     window.anchorCategoryPieChart.destroy();
-                    console.log('成功销毁图表实例');
+                    window.anchorCategoryPieChart = null;
                 } catch (e) {
                     console.error('销毁图表实例失败', e);
                 }
-                window.anchorCategoryPieChart = null;
             }
-        };
+        }, { once: true });
         
-        // 定义模态框完全隐藏后的事件处理程序
-        window.modalHiddenHandler = function() {
-            console.log('模态框已完全隐藏 (hidden.bs.modal)');
+        // 处理模态框完全隐藏后事件
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            console.log('模态框已完全隐藏，现在刷新页面图表');
             
-            // 恢复焦点
-            if (activeElement && document.body.contains(activeElement)) {
-                setTimeout(() => {
-                    try {
-                        activeElement.focus();
-                    } catch (e) {
-                        console.warn('恢复焦点失败', e);
-                    }
-                }, 10);
-            }
-            
-            // 应用aria-hidden属性
-            modalElement.setAttribute('aria-hidden', 'true');
-            
-            // 如果模态框实例还存在，手动销毁它
-            try {
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                if (modalInstance) {
-                    modalInstance.dispose();
-                }
-            } catch (e) {
-                console.warn('销毁模态框失败', e);
-            }
-        };
-        
-        // 确保关闭按钮事件处理程序仅绑定一次
-        const closeButton = modalElement.querySelector('.btn-close');
-        if (closeButton) {
-            // 移除所有现有的事件监听器
-            closeButton.replaceWith(closeButton.cloneNode(true));
-            
-            // 获取新的关闭按钮引用
-            const newCloseButton = modalElement.querySelector('.btn-close');
-            
-            // 重新添加事件监听器
-            newCloseButton.addEventListener('click', function() {
-                console.log('关闭按钮被点击');
+            // 重新初始化页面上的其他图表
+            setTimeout(function() {
                 try {
-                    modal.hide();
-                } catch (e) {
-                    console.error('关闭模态框失败', e);
-                    // 备用方式关闭模态框
-                    modalElement.classList.remove('show');
-                    document.body.classList.remove('modal-open');
-                    const backdrop = document.querySelector('.modal-backdrop');
-                    if (backdrop) {
-                        backdrop.remove();
+                    // 重新创建产品类别饼图
+                    if (document.getElementById('product-category-pie-chart')) {
+                        createProductCategoryCharts();
                     }
+                    
+                    // 重新创建销售趋势图
+                    if (document.getElementById('sales-trend-chart') && window.analysisResults) {
+                        displaySalesTrend(window.analysisResults);
+                    }
+                } catch(e) {
+                    console.error("重新初始化图表失败:", e);
                 }
-            });
-        }
-        
-        // 添加事件监听器
-        modalElement.addEventListener('show.bs.modal', window.modalShowHandler);
-        modalElement.addEventListener('shown.bs.modal', window.modalShownHandler);
-        modalElement.addEventListener('hide.bs.modal', window.modalHideHandler);
-        modalElement.addEventListener('hidden.bs.modal', window.modalHiddenHandler);
-        
-        // 手动设置一个数据属性，帮助我们追踪模态框状态
-        modalElement.dataset.anchorName = anchorName;
+            }, 100);
+        }, { once: true });
         
         // 显示模态框
-        console.log('准备显示模态框...');
         modal.show();
         
     } catch (error) {
@@ -2608,8 +2520,6 @@ function createAnchorCategoryCharts(anchorName) {
 
 // 添加点击主播名称事件，显示该主播的类目销售饼图
 function addAnchorClickEvents() {
-    console.log('添加主播名称点击事件');
-    
     // 查找分析表格中的所有主播名称单元格
     const analysisTables = document.querySelectorAll('#product-category-analysis table');
     
@@ -2618,80 +2528,44 @@ function addAnchorClickEvents() {
         return;
     }
     
-    // 先移除所有现有的点击事件处理程序
-    document.querySelectorAll('.anchor-name-cell').forEach(cell => {
-        // 使用更安全的方式移除事件监听器，防止内存泄漏
-        const newCell = cell.cloneNode(true);
-        cell.parentNode.replaceChild(newCell, cell);
-    });
+    console.log(`找到 ${analysisTables.length} 个分析表格`);
     
-    // 重新为表格中的主播名称添加点击事件
     analysisTables.forEach(table => {
         const rows = table.querySelectorAll('tbody tr');
         
         rows.forEach(row => {
             const firstCell = row.querySelector('td:first-child');
-            if (firstCell && firstCell.textContent && firstCell.textContent.trim() !== '总计') {
+            if (firstCell) {
                 const anchorName = firstCell.textContent.trim();
                 
-                // 添加视觉提示
-                firstCell.classList.add('anchor-name-cell');
-                firstCell.style.cursor = 'pointer';
-                firstCell.style.textDecoration = 'underline';
-                firstCell.title = `点击查看${anchorName}的类目销售详情`;
-                
-                // 添加点击事件 - 使用更简单的点击处理
-                firstCell.addEventListener('click', function(event) {
-                    event.preventDefault();
-                    event.stopPropagation();
+                // 确保不是总计行
+                if (anchorName !== '总计') {
+                    // 添加点击样式和事件
+                    firstCell.style.cursor = 'pointer';
+                    firstCell.style.textDecoration = 'underline';
+                    firstCell.title = `点击查看${anchorName}的类目销售详情`;
                     
-                    console.log(`点击查看主播 ${anchorName} 的销售详情`);
+                    // 移除旧的事件监听器，避免重复绑定
+                    firstCell.replaceWith(firstCell.cloneNode(true));
+                    const newCell = row.querySelector('td:first-child');
                     
-                    // 强制清理任何可能存在的模态框
-                    const existingModal = document.querySelector('.modal.show');
-                    if (existingModal) {
-                        try {
-                            // 尝试使用Bootstrap API关闭模态框
-                            const instance = bootstrap.Modal.getInstance(existingModal);
-                            if (instance) {
-                                instance.hide();
-                                console.log('已关闭现有模态框');
-                            } else {
-                                // 手动移除模态框
-                                existingModal.classList.remove('show');
-                                document.body.classList.remove('modal-open');
-                                const backdrops = document.querySelectorAll('.modal-backdrop');
-                                backdrops.forEach(backdrop => backdrop.remove());
-                                console.log('已手动清理模态框状态');
-                            }
-                        } catch (error) {
-                            console.error('关闭现有模态框失败:', error);
-                        }
-                        
-                        // 在旧模态框完全关闭后再显示新模态框
-                        setTimeout(() => {
-                            try {
-                                createAnchorCategoryCharts(anchorName);
-                            } catch (e) {
-                                console.error(`显示主播${anchorName}的分析时出错:`, e);
-                                alert(`无法显示主播${anchorName}的销售分析，请查看控制台错误信息。`);
-                            }
-                        }, 400); // 给足够的时间让模态框完全关闭
-                    } else {
-                        // 如果没有现有模态框，直接显示
+                    // 重新添加事件
+                    newCell.style.cursor = 'pointer';
+                    newCell.style.textDecoration = 'underline';
+                    newCell.title = `点击查看${anchorName}的类目销售详情`;
+                    
+                    newCell.addEventListener('click', () => {
                         try {
                             createAnchorCategoryCharts(anchorName);
-                        } catch (e) {
-                            console.error(`显示主播${anchorName}的分析时出错:`, e);
-                            alert(`无法显示主播${anchorName}的销售分析，请查看控制台错误信息。`);
+                        } catch (error) {
+                            console.error(`显示主播${anchorName}的类目销售分析时出错:`, error);
+                            alert(`无法显示主播${anchorName}的类目销售分析，请查看控制台获取详细错误信息。`);
                         }
-                    }
-                });
+                    });
+                }
             }
         });
     });
-    
-    console.log('已为所有主播名称添加点击事件');
 }
 
 // 显示销售趋势图
@@ -3189,161 +3063,50 @@ function generateAISuggestions(results) {
 
 // 修复模态框ARIA属性问题
 function fixModalAriaAttributes() {
-    console.log('正在初始化模态框无障碍属性...');
-    
     // 获取所有模态框元素
     const modalElements = document.querySelectorAll('.modal');
-    if (!modalElements || modalElements.length === 0) {
-        console.warn('没有找到模态框元素');
-        return;
-    }
     
-    // 为每个模态框设置正确的ARIA属性和事件处理
     modalElements.forEach(modal => {
-        // 先移除可能导致问题的aria-hidden属性
-        if (modal.getAttribute('aria-hidden') === 'true') {
+        // 监听模态框显示事件
+        modal.addEventListener('show.bs.modal', function() {
+            // 确保在显示时移除aria-hidden属性
             modal.removeAttribute('aria-hidden');
-        }
-        
-        // 获取该模态框的所有关闭按钮
-        const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"]');
-        
-        // 移除并重新绑定关闭按钮事件
-        closeButtons.forEach(button => {
-            // 克隆按钮以移除所有现有事件监听器
-            const newButton = button.cloneNode(true);
-            button.parentNode.replaceChild(newButton, button);
-            
-            // 给新按钮添加点击事件
-            newButton.addEventListener('click', function(event) {
-                console.log('模态框关闭按钮被点击');
-                
-                try {
-                    // 尝试使用Bootstrap API关闭模态框
-                    const modalInstance = bootstrap.Modal.getInstance(modal);
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    } else {
-                        // 如果无法获取实例，使用备用方法关闭
-                        modal.classList.remove('show');
-                        document.body.classList.remove('modal-open');
-                        const backdrops = document.querySelectorAll('.modal-backdrop');
-                        backdrops.forEach(backdrop => backdrop.remove());
-                    }
-                } catch (error) {
-                    console.error('关闭模态框失败:', error);
-                    
-                    // 最后的备用方法：直接设置样式
-                    modal.style.display = 'none';
-                    document.body.classList.remove('modal-open');
-                    const backdrops = document.querySelectorAll('.modal-backdrop');
-                    backdrops.forEach(backdrop => backdrop.remove());
-                }
-            });
         });
         
-        // 一个变量来存储模态框打开前的活动元素
-        let previouslyFocusedElement = null;
-        
-        // 设置模态框显示前事件
-        const showHandler = function() {
-            console.log('模态框将要显示');
-            // 存储当前焦点元素
-            previouslyFocusedElement = document.activeElement;
-            
-            // 确保模态框可以正常获得焦点
-            modal.removeAttribute('aria-hidden');
-            
-            // 使模态框中的元素可聚焦
-            const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea');
-            focusableElements.forEach(el => {
-                if (el.getAttribute('tabindex') === '-1') {
-                    el.removeAttribute('tabindex');
-                }
-            });
-        };
-        
-        // 设置模态框显示后事件
-        const shownHandler = function() {
-            console.log('模态框已显示');
-            // 将焦点设置到第一个可聚焦元素（通常是关闭按钮）
-            const firstFocusable = modal.querySelector('button, [href], input, select, textarea');
-            if (firstFocusable) {
-                setTimeout(() => firstFocusable.focus(), 50);
-            }
-        };
-        
-        // 设置模态框隐藏前事件
-        const hideHandler = function() {
-            console.log('模态框将要隐藏');
-            // 移除内部元素的焦点
-            if (document.activeElement && modal.contains(document.activeElement)) {
-                document.activeElement.blur();
-            }
-        };
-        
-        // 设置模态框隐藏后事件
-        const hiddenHandler = function() {
-            console.log('模态框已隐藏');
-            
-            // 恢复原始焦点
-            if (previouslyFocusedElement && document.body.contains(previouslyFocusedElement)) {
-                setTimeout(() => {
-                    try {
-                        previouslyFocusedElement.focus();
-                    } catch (e) {
-                        console.warn('恢复焦点失败', e);
-                    }
-                    previouslyFocusedElement = null;
-                }, 10);
-            }
-            
-            // 确保饼图实例被销毁
-            if (window.anchorCategoryPieChart instanceof Chart) {
-                try {
-                    window.anchorCategoryPieChart.destroy();
-                    window.anchorCategoryPieChart = null;
-                } catch (e) {
-                    console.warn('销毁图表失败:', e);
-                }
-            }
-            
-            // 设置aria-hidden属性
-            modal.setAttribute('aria-hidden', 'true');
-            
-            // 确保模态框完全关闭并清理
+        // 监听模态框隐藏事件
+        modal.addEventListener('hidden.bs.modal', function() {
+            // 确保在隐藏后正确设置aria-hidden属性
             setTimeout(() => {
                 if (!modal.classList.contains('show')) {
-                    // 移除可能残留的背景
-                    const backdrops = document.querySelectorAll('.modal-backdrop');
-                    backdrops.forEach(backdrop => backdrop.remove());
+                    modal.setAttribute('aria-hidden', 'true');
                     
-                    // 确保body不再有modal-open类
-                    if (!document.querySelector('.modal.show')) {
-                        document.body.classList.remove('modal-open');
-                    }
+                    // 移除所有可聚焦元素的tabindex属性
+                    const focusableElements = modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+                    focusableElements.forEach(el => {
+                        el.setAttribute('tabindex', '-1');
+                    });
                 }
-            }, 150);
-        };
-        
-        // 移除并重新添加事件监听器，避免重复绑定
-        ['show.bs.modal', 'shown.bs.modal', 'hide.bs.modal', 'hidden.bs.modal'].forEach(event => {
-            // 使用事件冒泡的特性，先移除所有事件，然后添加一个新事件
-            modal.removeEventListener(event, modal[`${event.split('.')[0]}Handler`]);
+            }, 300); // 延迟确保Bootstrap完成了过渡
         });
-        
-        // 存储处理程序引用，以便将来移除
-        modal.showHandler = showHandler;
-        modal.shownHandler = shownHandler;
-        modal.hideHandler = hideHandler;
-        modal.hiddenHandler = hiddenHandler;
-        
-        // 添加新的事件监听器
-        modal.addEventListener('show.bs.modal', showHandler);
-        modal.addEventListener('shown.bs.modal', shownHandler);
-        modal.addEventListener('hide.bs.modal', hideHandler);
-        modal.addEventListener('hidden.bs.modal', hiddenHandler);
     });
-    
-    console.log('模态框无障碍属性初始化完成');
 }
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化下拉区域
+    initializeDropZones();
+    
+    // 修复模态框ARIA属性问题
+    fixModalAriaAttributes();
+
+    // 绑定分析按钮事件
+    document.getElementById('analyze-btn').addEventListener('click', startAnalysis);
+    
+    // 绑定清除按钮事件
+    document.getElementById('clear-btn').addEventListener('click', clearData);
+    
+    // 绑定导出按钮事件
+    document.getElementById('export-btn').addEventListener('click', exportResults);
+    
+    console.log('页面初始化完成');
+});
