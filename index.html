@@ -42,63 +42,82 @@
             </header>
 
             <main>
+                <!-- 上传区域 -->
                 <section class="upload-section mb-5">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h2 class="h4 mb-0"><i class="bi bi-cloud-upload me-2"></i>文件上传</h2>
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-gradient-primary text-white">
+                            <h2 class="h4 mb-0"><i class="bi bi-cloud-arrow-up me-2"></i>上传文件</h2>
                         </div>
-                        <div class="card-body">
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <div class="upload-box" id="sales-upload-box">
-                                        <h3 class="h5 mb-3"><i class="bi bi-file-earmark-spreadsheet me-2"></i>销售数据</h3>
-                                        <div class="upload-area" id="sales-upload-area" data-status="sales-status" data-type="sales">
-                                            <i class="bi bi-file-earmark-excel upload-icon"></i>
-                                            <p class="mb-3">拖放销售数据Excel文件至此处</p>
-                                            <input type="file" id="sales-file" accept=".xlsx, .xls" style="display: none;">
-                                            <label for="sales-file" class="btn btn-outline-primary">选择文件</label>
+                        <div class="card-body p-4">
+                            <div class="row">
+                                <!-- 销售数据上传 -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="upload-area" data-type="sales" id="sales-upload-area" data-status="sales-status">
+                                        <div class="upload-icon">
+                                            <i class="bi bi-file-earmark-excel"></i>
                                         </div>
-                                        <div class="file-info" id="sales-file-info">
-                                            <div class="file-details d-none">
-                                                <span class="file-name"></span>
-                                                <span class="file-size"></span>
+                                        <h5 class="text-primary font-weight-bold">销售数据</h5>
+                                        <p class="text-muted small mb-3">拖放或点击上传Excel文件</p>
+                                        <input type="file" class="file-input" id="sales-file" accept=".xlsx,.xls" hidden>
+                                        <label for="sales-file" class="btn btn-outline-primary rounded-pill px-4">
+                                            <i class="bi bi-upload me-2"></i>选择文件
+                                        </label>
+                                        <div id="sales-status" class="mt-2"></div>
+                                        <div id="sales-file-info" class="mt-3 w-100">
+                                            <div class="file-details d-none bg-light p-3 rounded">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-file-earmark-excel text-success me-2 fs-4"></i>
+                                                    <div>
+                                                        <div class="text-primary fw-bold file-name"></div>
+                                                        <div class="text-muted small file-size-wrapper">大小: <span class="file-size badge bg-primary"></span></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div id="sales-status"></div>
                                     </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <div class="upload-box" id="schedule-upload-box">
-                                        <h3 class="h5 mb-3"><i class="bi bi-calendar-check me-2"></i>主播排班表</h3>
-                                        <div class="upload-area" id="schedule-upload-area" data-status="schedule-status" data-type="schedule">
-                                            <i class="bi bi-file-earmark-excel upload-icon"></i>
-                                            <p class="mb-3">拖放主播排班Excel文件至此处</p>
-                                            <input type="file" id="schedule-file" accept=".xlsx, .xls" style="display: none;">
-                                            <label for="schedule-file" class="btn btn-outline-primary">选择文件</label>
+                                
+                                <!-- 主播排班表上传 -->
+                                <div class="col-md-6 mb-4">
+                                    <div class="upload-area" data-type="schedule" id="schedule-upload-area" data-status="schedule-status">
+                                        <div class="upload-icon">
+                                            <i class="bi bi-file-earmark-excel"></i>
                                         </div>
-                                        <div class="file-info" id="schedule-file-info">
-                                            <div class="file-details d-none">
-                                                <span class="file-name"></span>
-                                                <span class="file-size"></span>
+                                        <h5 class="text-primary font-weight-bold">主播排班表</h5>
+                                        <p class="text-muted small mb-3">拖放或点击上传Excel文件</p>
+                                        <input type="file" class="file-input" id="schedule-file" accept=".xlsx,.xls" hidden>
+                                        <label for="schedule-file" class="btn btn-outline-primary rounded-pill px-4">
+                                            <i class="bi bi-upload me-2"></i>选择文件
+                                        </label>
+                                        <div id="schedule-status" class="mt-2"></div>
+                                        <div id="schedule-file-info" class="mt-3 w-100">
+                                            <div class="file-details d-none bg-light p-3 rounded">
+                                                <div class="d-flex align-items-center">
+                                                    <i class="bi bi-file-earmark-excel text-success me-2 fs-4"></i>
+                                                    <div>
+                                                        <div class="text-primary fw-bold file-name"></div>
+                                                        <div class="text-muted small file-size-wrapper">大小: <span class="file-size badge bg-primary"></span></div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div id="schedule-status"></div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="d-flex justify-content-center mt-4">
-                                <button id="analyze-btn" class="btn btn-primary me-3" disabled>
-                                    <i class="bi bi-play-circle me-2"></i>开始分析
+                            
+                            <div class="text-center mt-4">
+                                <button class="btn btn-primary btn-lg rounded-pill px-5 py-2 shadow-sm" id="analyze-btn" disabled>
+                                    <i class="bi bi-play-fill me-2"></i>开始分析
                                 </button>
-                                <button id="clear-btn" class="btn btn-outline-secondary">
-                                    <i class="bi bi-trash me-2"></i>清除
+                                <button class="btn btn-outline-secondary btn-lg rounded-pill px-4 py-2 ms-3" id="clear-btn">
+                                    <i class="bi bi-x-lg me-2"></i>清除
                                 </button>
                             </div>
-                            <div id="notice-area" class="mt-4"></div>
                         </div>
                     </div>
                 </section>
 
+                <!-- 结果区域 -->
                 <section class="results-section d-none" id="results-section">
                     <div class="card">
                         <div class="card-header">
@@ -122,72 +141,193 @@
                                     </button>
                                 </li>
                             </ul>
+                            
                             <div class="tab-content" id="resultTabsContent">
+                                <!-- 匹配结果标签页 -->
                                 <div class="tab-pane fade show active" id="matching" role="tabpanel">
-                                    <div class="card mb-4">
-                                        <div class="card-header">
-                                            <h5>主播匹配结果</h5>
+                                    <div class="card mb-4 shadow-sm border-0">
+                                        <div class="card-header bg-gradient-primary text-white">
+                                            <h5 class="mb-0"><i class="bi bi-people-fill me-2"></i>主播匹配结果</h5>
                                         </div>
-                                        <div class="card-body">
-                                            <!-- 匹配结果统计 -->
-                                            <div id="matching-summary"></div>
+                                        <div class="card-body p-4">
+                                            <div id="matching-summary" class="alert alert-info mb-4"></div>
                                             
-                                            <div id="matching" class="mb-5">
+                                            <div class="mb-5">
                                                 <div class="table-responsive">
                                                     <table class="table table-bordered table-hover">
-                                                        <thead class="table-light">
+                                                        <thead class="table-primary">
                                                             <tr>
-                                                                <th>选购商品</th>
-                                                                <th>商品规格</th>
-                                                                <th>商品数量</th>
-                                                                <th>订单金额</th>
-                                                                <th>订单时间</th>
-                                                                <th>匹配主播</th>
-                                                                <th>工作时段</th>
+                                                                <th class="th-product">选购商品</th>
+                                                                <th class="th-spec">商品规格</th>
+                                                                <th class="th-quantity">商品<br>数量</th>
+                                                                <th class="th-price">订单金额</th>
+                                                                <th class="th-time">订单时间</th>
+                                                                <th class="th-anchor">匹配主播</th>
+                                                                <th class="th-timeSlot">工作时段</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody id="matching-table-body">
-                                                            <!-- 这里将通过JavaScript填充结果 -->
+                                                            <!-- JavaScript填充结果 -->
                                                         </tbody>
                                                     </table>
+                                                </div>
+                                                <div class="d-flex justify-content-between align-items-center mt-4">
+                                                    <div class="pagination-info text-muted small">
+                                                        <!-- 移除显示条数信息 -->
+                                                    </div>
+                                                    <div class="pagination-controls" id="pagination-controls">
+                                                        <!-- 分页控件由JavaScript生成 -->
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <!-- 数据分析标签页 -->
                                 <div class="tab-pane fade" id="analysis" role="tabpanel">
-                                    <div class="row mt-4">
+                                    <div class="row">
                                         <div class="col-md-12">
                                             <div class="card">
                                                 <div class="card-header">
-                                                    <h5 class="card-title mb-0">数据分析</h5>
+                                                    <h5 class="card-title mb-0">销售趋势分析</h5>
                                                 </div>
                                                 <div class="card-body">
                                                     <div class="row">
                                                         <div class="col-md-12 mb-4">
-                                                            <div class="chart-container" style="position: relative; height:300px;">
+                                                            <div class="chart-container" style="position: relative; height:400px;">
                                                                 <canvas id="sales-trend-chart"></canvas>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div class="row mt-3">
-                                                        <div class="col-12">
-                                                            <div class="alert alert-info">
-                                                                <h6 class="alert-heading">分析建议</h6>
-                                                                <div id="ai-suggestions"></div>
+                                                    
+                                                    <!-- 销售摘要信息 -->
+                                                    <div class="row mt-4" id="sales-summary-container">
+                                                        <!-- 销售摘要卡片将由JavaScript动态生成 -->
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- 商品类别销售分布 -->
+                                    <div class="row mt-4">
+                                        <div class="col-md-12">
+                                            <div class="card shadow-sm border-0">
+                                                <div class="card-header bg-gradient-primary text-white">
+                                                    <h5 class="mb-0"><i class="bi bi-pie-chart-fill me-2"></i>商品类别销售额分布</h5>
+                                                </div>
+                                                <div class="card-body p-4">
+                                                    <div class="row">
+                                                        <div class="col-md-6">
+                                                            <div class="chart-container" style="position: relative; height:350px; display: flex; justify-content: center; align-items: center;">
+                                                                <canvas id="product-category-pie-chart"></canvas>
+                                                            </div>
+                                                            <div class="text-center mt-3">
+                                                                <div class="bg-light rounded-pill px-4 py-3 d-inline-block shadow-sm">
+                                                                    <div class="d-flex align-items-center">
+                                                                        <i class="bi bi-cash-coin text-success me-2 fs-4"></i>
+                                                                        <div>
+                                                                            <div class="text-secondary small">总销售额</div>
+                                                                            <div class="h4 mb-0 text-primary fw-bold">¥1,023,272.00</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="col-md-6" id="product-category-stats">
+                                                            <h5 class="text-gray-800 mb-4 border-bottom pb-2">类别销售占比</h5>
+                                                            
+                                                            <!-- 源悦类 -->
+                                                            <div class="category-stat-item mb-4">
+                                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                    <h6 class="mb-0 d-flex align-items-center">
+                                                                        <span class="badge bg-primary rounded-circle me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                                                                        <span>源悦类</span>
+                                                                    </h6>
+                                                                    <span class="text-dark fw-bold">35.0%</span>
+                                                                </div>
+                                                                <div class="progress" style="height: 10px; border-radius: 10px; overflow: hidden;">
+                                                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 35%; border-radius: 10px;" 
+                                                                        aria-valuenow="35" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                </div>
+                                                                <div class="small text-end mt-1 text-primary">¥358,545.96</div>
+                                                            </div>
+                                                            
+                                                            <!-- 莼悦类 -->
+                                                            <div class="category-stat-item mb-4">
+                                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                    <h6 class="mb-0 d-flex align-items-center">
+                                                                        <span class="badge bg-success rounded-circle me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                                                                        <span>莼悦类</span>
+                                                                    </h6>
+                                                                    <span class="text-dark fw-bold">6.7%</span>
+                                                                </div>
+                                                                <div class="progress" style="height: 10px; border-radius: 10px; overflow: hidden;">
+                                                                    <div class="progress-bar bg-success" role="progressbar" style="width: 6.7%; border-radius: 10px;" 
+                                                                        aria-valuenow="6.7" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                </div>
+                                                                <div class="small text-end mt-1 text-success">¥68,753.00</div>
+                                                            </div>
+                                                            
+                                                            <!-- 旺玥类 -->
+                                                            <div class="category-stat-item mb-4">
+                                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                    <h6 class="mb-0 d-flex align-items-center">
+                                                                        <span class="badge bg-warning rounded-circle me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                                                                        <span>旺玥类</span>
+                                                                    </h6>
+                                                                    <span class="text-dark fw-bold">21.3%</span>
+                                                                </div>
+                                                                <div class="progress" style="height: 10px; border-radius: 10px; overflow: hidden;">
+                                                                    <div class="progress-bar bg-warning" role="progressbar" style="width: 21.3%; border-radius: 10px;" 
+                                                                        aria-valuenow="21.3" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                </div>
+                                                                <div class="small text-end mt-1 text-warning">¥217,489.79</div>
+                                                            </div>
+                                                            
+                                                            <!-- 皇家类 -->
+                                                            <div class="category-stat-item mb-4">
+                                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                                    <h6 class="mb-0 d-flex align-items-center">
+                                                                        <span class="badge bg-danger rounded-circle me-2" style="width: 12px; height: 12px; padding: 0;"></span>
+                                                                        <span>皇家类</span>
+                                                                    </h6>
+                                                                    <span class="text-dark fw-bold">37.0%</span>
+                                                                </div>
+                                                                <div class="progress" style="height: 10px; border-radius: 10px; overflow: hidden;">
+                                                                    <div class="progress-bar bg-danger" role="progressbar" style="width: 37%; border-radius: 10px;" 
+                                                                        aria-valuenow="37" aria-valuemin="0" aria-valuemax="100"></div>
+                                                                </div>
+                                                                <div class="small text-end mt-1 text-danger">¥378,418.25</div>
+                                                            </div>
+                                                            
+                                                            <!-- 分析洞察 -->
+                                                            <div class="alert alert-light mt-4 shadow-sm border-0">
+                                                                <div class="d-flex align-items-center">
+                                                                    <i class="bi bi-lightbulb-fill text-warning me-3 fs-4"></i>
+                                                                    <div>
+                                                                        <h6 class="mb-1 text-primary">销售分析洞察</h6>
+                                                                        <p class="mb-0 small">皇家类表现突出，占据了销售的主要份额(37%)。建议重点关注莼悦类的提升空间，可以考虑调整营销策略或主播排班方式来平衡各类商品销售。</p>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
+                                        </div>
+                                    </div>
                                 </div>
+                                
+                                <!-- AI建议标签页 -->
                                 <div class="tab-pane fade" id="ai" role="tabpanel">
                                     <div class="ai-suggestions">
-                                        <div class="card mb-4">
-                                            <div class="card-header">
+                                        <div class="card mb-4 shadow-sm border-0">
+                                            <div class="card-header bg-gradient-primary text-white">
                                                 <h3 class="h5 mb-0"><i class="bi bi-clipboard-data me-2"></i>整体销售分析</h3>
                                             </div>
-                                            <div class="card-body" id="overall-analysis">
+                                            <div class="card-body p-4" id="overall-analysis">
                                                 <!-- AI生成的整体分析 -->
                                             </div>
                                         </div>
@@ -197,8 +337,9 @@
                                     </div>
                                 </div>
                             </div>
+                            
                             <div class="d-flex justify-content-center mt-4">
-                                <button id="export-btn" class="btn btn-success">
+                                <button id="export-btn" class="btn btn-success rounded-pill px-5 py-2 shadow-sm">
                                     <i class="bi bi-download me-2"></i>导出结果
                                 </button>
                             </div>
@@ -208,7 +349,7 @@
             </main>
         </div>
 
-        <footer class="text-center">
+        <footer class="text-center mt-4">
             <p class="mb-0">销售数据与主播排班匹配分析系统 &copy; 2025</p>
         </footer>
     </div>
@@ -230,130 +371,59 @@
         </div>
     </div>
 
-    <!-- 帮助模态框 -->
-    <div class="modal fade" id="help-modal" tabindex="-1" aria-labelledby="helpModalLabel">
+    <!-- 主播类目分析模态框 -->
+    <div class="modal fade" id="anchor-chart-modal" tabindex="-1" aria-labelledby="anchorChartModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>使用帮助</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="accordion" id="helpAccordion">
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
-                                    <i class="bi bi-file-earmark-excel me-2"></i>数据格式要求
-                                </button>
-                            </h2>
-                            <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
-                                <div class="accordion-body">
-                                    <h6>销售数据Excel格式要求：</h6>
-                                    <ul>
-                                        <li>选购商品</li>
-                                        <li>商品规格</li>
-                                        <li>商品数量（数字格式）</li>
-                                        <li>订单应付金额（数字格式）</li>
-                                        <li>订单提交时间（格式：YYYY-MM-DD HH:MM:SS）</li>
-                                    </ul>
-                                    <h6>主播排班表格式要求：</h6>
-                                    <ul>
-                                        <li>第一行：日期列标题（例如：3月1号、3月2号等）</li>
-                                        <li>第一列：主播列（主播姓名/ID）</li>
-                                        <li>时间段格式：HH:MM-HH:MM（例如：08:00-09:00）</li>
-                                        <li>无排班时段使用"-"表示</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
-                                    <i class="bi bi-upload me-2"></i>如何上传文件
-                                </button>
-                            </h2>
-                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
-                                <div class="accordion-body">
-                                    <p>您可以通过以下两种方式上传文件：</p>
-                                    <ol>
-                                        <li>直接将Excel文件拖放到对应的上传区域</li>
-                                        <li>点击"选择文件"按钮，从文件浏览器中选择文件</li>
-                                    </ol>
-                                    <p class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>注意：只支持.xlsx和.xls格式的Excel文件</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
-                                    <i class="bi bi-graph-up me-2"></i>查看分析结果
-                                </button>
-                            </h2>
-                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
-                                <div class="accordion-body">
-                                    <p>分析结果分为三个部分：</p>
-                                    <ul>
-                                        <li><strong>匹配结果：</strong>显示每个订单与主播的匹配详情</li>
-                                        <li><strong>数据分析：</strong>包含销售趋势图和主播业绩对比图</li>
-                                        <li><strong>AI建议：</strong>基于数据分析的优化建议</li>
-                                    </ul>
-                                    <p>您可以使用"导出结果"按钮将分析结果导出为Excel文件。</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 主播类目分析模态框 - 预定义模态框结构 -->
-    <div class="modal fade" id="anchor-chart-modal" data-bs-backdrop="static" data-bs-keyboard="false" aria-labelledby="anchorChartModalLabel" role="dialog" tabindex="-1">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title" id="anchorChartModalLabel">
-                        <i class="bi bi-pie-chart me-2"></i>
-                        <span id="anchor-name-title">主播类目销售分析</span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="关闭"></button>
+                    <h5 class="modal-title" id="anchorChartModalLabel">主播类目销售分析</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-md-8 mx-auto">
-                            <div class="chart-container" style="position: relative; height: 400px;">
+                        <div class="col-md-7">
+                            <div class="chart-container mb-3" style="position: relative; height: 300px;">
                                 <canvas id="anchor-category-pie-chart"></canvas>
                             </div>
+                            <div class="text-center">
+                                <div class="badge bg-primary rounded-pill fs-6 px-3 py-2">
+                                    总销售额: <span id="anchor-total-sales">¥0.00</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mt-4">
-                        <div class="col-12">
+                        <div class="col-md-5">
                             <div class="table-responsive">
-                                <table class="table table-bordered table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th class="text-center">类目</th>
-                                            <th class="text-center">销售额</th>
-                                            <th class="text-center">占比</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="anchor-category-table">
-                                    </tbody>
+                                <table class="table table-hover" id="anchor-category-table">
+                                    <!-- 表格内容动态生成 -->
                                 </table>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <div class="row w-100">
+                        <div class="col-md-6 mb-2 mb-md-0">
+                            <button type="button" id="export-anchor-data" class="btn btn-primary w-100">
+                                <i class="bi bi-download me-1"></i>导出数据
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex">
+                                <button type="button" id="show-anchor-details" class="btn btn-success flex-grow-1 me-2">
+                                    <i class="bi bi-bar-chart-line me-1"></i>查看详情
+                                </button>
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    <i class="bi bi-x-circle me-1"></i>关闭
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- 引入JS脚本 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

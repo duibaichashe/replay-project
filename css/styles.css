@@ -38,6 +38,11 @@ body {
     padding: 2rem;
 }
 
+/* 背景渐变 */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+}
+
 /* 上传区域样式 */
 .upload-box {
     border: 1px solid var(--border-color);
@@ -54,24 +59,27 @@ body {
 
 .upload-area {
     border: 2px dashed var(--primary-color);
-    border-radius: 10px;
-    padding: 2rem 1rem;
+    border-radius: 15px;
+    padding: 2rem 1.5rem;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
     margin-bottom: 1rem;
     background-color: var(--primary-light);
     position: relative;
-    min-height: 200px;
+    min-height: 220px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.03);
 }
 
 .upload-area:hover {
     border-color: var(--primary-dark);
     background-color: #e6f0fa;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
 }
 
 .upload-area.dragover {
@@ -93,17 +101,29 @@ body {
 .upload-area label.btn {
     cursor: pointer;
     z-index: 1;
+    transition: all 0.3s ease;
 }
 
 .upload-area label.btn:hover {
     background-color: var(--primary-color);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 
 .upload-icon {
+    font-size: 3.5rem;
     color: var(--primary-color);
-    margin-bottom: 1rem;
-    font-size: 2.5rem !important;
+    margin-bottom: 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.upload-icon i {
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.15));
+}
+
+.upload-area:hover .upload-icon {
+    transform: scale(1.1);
 }
 
 /* 文件信息样式 */
@@ -126,10 +146,10 @@ body {
 .file-name {
     font-weight: 500;
     color: var(--primary-dark);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 70%;
+    word-break: break-all;
+    overflow: visible;
+    text-overflow: initial;
+    max-width: 100%;
 }
 
 .file-size {
@@ -236,6 +256,35 @@ body {
     padding: 0.75rem 0.5rem;
 }
 
+/* 表格列宽控制 */
+.table th.th-product {
+    width: 30%;
+}
+
+.table th.th-spec {
+    width: 15%;
+}
+
+.table th.th-quantity {
+    width: 5%;
+}
+
+.table th.th-price {
+    width: 10%;
+}
+
+.table th.th-time {
+    width: 12%;
+}
+
+.table th.th-anchor {
+    width: 8%;
+}
+
+.table th.th-timeSlot {
+    width: 10%;
+}
+
 .table tbody tr:hover {
     background-color: var(--primary-light);
 }
@@ -245,6 +294,12 @@ body {
     vertical-align: middle;
     border-bottom: 1px solid var(--border-color);
     word-break: break-word;
+}
+
+/* 防止多字段换行 */
+.table .no-wrap-text {
+    white-space: nowrap;
+    width: 1%;
 }
 
 .table .product-name {
@@ -392,4 +447,27 @@ footer {
     .modal-body {
         padding: 1.2rem;
     }
+}
+
+/* 统一上传状态和文件信息框样式 */
+#sales-status .alert,
+#schedule-status .alert,
+.file-details {
+    width: 100%;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+}
+
+#sales-status .alert-success,
+#schedule-status .alert-success {
+    background-color: #e8f5e9;
+    border-color: #c8e6c9;
+    color: #2e7d32;
+}
+
+.file-details {
+    justify-content: space-between;
 } 
