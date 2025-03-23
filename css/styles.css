@@ -470,4 +470,136 @@ footer {
 
 .file-details {
     justify-content: space-between;
+}
+
+/* 订单详情模态框样式优化 */
+#categoryTabs {
+    display: flex;
+    justify-content: space-between;
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#categoryTabs .nav-item {
+    flex: 1;
+    text-align: center;
+    margin: 0 5px;
+}
+
+#categoryTabs .nav-link {
+    border-radius: 8px;
+    padding: 12px 10px;
+    font-weight: 600;
+    color: #495057;
+    position: relative;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+    background-color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#categoryTabs .nav-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#categoryTabs .nav-link.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 10px rgba(74, 144, 226, 0.25);
+}
+
+#categoryTabs .nav-link .badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    font-weight: 600;
+    border: 2px solid white;
+}
+
+/* 旺玥类标签 */
+#wang-tab .badge {
+    background-color: var(--warning-color);
+}
+
+/* 源悦类标签 */
+#yuan-tab .badge {
+    background-color: var(--primary-color);
+}
+
+/* 莼悦类标签 */
+#chun-tab .badge {
+    background-color: var(--success-color);
+}
+
+/* 皇家类标签 */
+#royal-tab .badge {
+    background-color: var(--danger-color);
+}
+
+/* 分页控件样式优化 */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 15px;
+}
+
+.pagination-controls .btn-group {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.pagination-controls .btn {
+    border: none;
+    padding: 8px 12px;
+    background-color: white;
+    color: var(--primary-color);
+    transition: all 0.2s ease;
+}
+
+.pagination-controls .btn:hover:not(:disabled) {
+    background-color: #e9f2ff;
+}
+
+.pagination-controls .btn:disabled {
+    color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
+.pagination-controls .btn-outline-secondary {
+    background-color: #f8f9fa;
+    min-width: 120px;
+    text-align: center;
+}
+
+.pagination-controls .input-group {
+    margin-left: 10px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.pagination-controls input[type="number"] {
+    border: none;
+    text-align: center;
+    font-weight: 500;
+    padding: 8px 5px;
+}
+
+.pagination-controls .btn-outline-primary {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.pagination-controls .btn-outline-primary:hover {
+    background-color: var(--primary-dark);
 } 

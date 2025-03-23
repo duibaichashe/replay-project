@@ -1,0 +1,141 @@
+/* 订单详情模态框样式增强 */
+
+/* ===== 标签页样式优化 ===== */
+#categoryTabs {
+    display: flex;
+    justify-content: space-around;
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+#categoryTabs .nav-item {
+    flex: 1;
+    text-align: center;
+    margin: 0 8px;
+}
+
+#categoryTabs .nav-link {
+    border-radius: 8px;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: #495057;
+    position: relative;
+    transition: all 0.3s ease;
+    border: none;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+#categoryTabs .nav-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#categoryTabs .nav-link.active {
+    background-color: #4a90e2;
+    color: white;
+    box-shadow: 0 4px 10px rgba(74, 144, 226, 0.3);
+}
+
+/* 类别徽章样式 */
+#wang-tab .badge {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+#yuan-tab .badge {
+    background-color: #4a90e2;
+}
+
+#chun-tab .badge {
+    background-color: #28a745;
+}
+
+#royal-tab .badge {
+    background-color: #dc3545;
+}
+
+#categoryTabs .badge {
+    border-radius: 20px;
+    padding: 5px 10px;
+    margin-left: 8px;
+    font-weight: normal;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+/* ===== 分页控件样式优化 ===== */
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 20px;
+}
+
+/* 分页按钮组 */
+.pagination-controls .btn-group {
+    border-radius: 30px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.pagination-controls .btn {
+    border: none;
+    padding: 8px 12px;
+    background-color: white;
+    color: #4a90e2;
+    transition: all 0.2s ease;
+}
+
+.pagination-controls .btn:hover:not(:disabled) {
+    background-color: #e9f2ff;
+}
+
+.pagination-controls .btn:disabled {
+    color: #adb5bd;
+    background-color: #f8f9fa;
+}
+
+/* 页码信息按钮 */
+.pagination-controls .btn-outline-secondary {
+    background-color: #f8f9fa;
+    min-width: 140px;
+    text-align: center;
+    color: #495057;
+    font-weight: 500;
+}
+
+/* 跳转输入组 */
+.pagination-controls .input-group {
+    margin-left: 15px;
+    width: 180px;
+    border-radius: 30px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.pagination-controls input[type="number"] {
+    border: none;
+    text-align: center;
+    font-weight: 500;
+    padding: 8px 12px;
+    box-shadow: none !important;
+}
+
+.pagination-controls input[type="number"]:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.pagination-controls .btn-outline-primary {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+}
+
+.pagination-controls .btn-outline-primary:hover {
+    background-color: #357abd;
+} 
