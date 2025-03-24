@@ -69,21 +69,26 @@
 /* ===== 分页控件样式优化 ===== */
 .pagination-controls {
     display: flex;
-    justify-content: center;
+    justify-content: flex-end;
     align-items: center;
-    margin-top: 20px;
+    gap: 12px;
+    margin-top: 15px;
+    flex-wrap: nowrap;
 }
 
 /* 分页按钮组 */
 .pagination-controls .btn-group {
-    border-radius: 30px;
+    border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    height: 32px;
 }
 
 .pagination-controls .btn {
+    height: 100%;
+    padding: 4px 10px;
+    font-size: 0.875rem;
     border: none;
-    padding: 8px 12px;
     background-color: white;
     color: #4a90e2;
     transition: all 0.2s ease;
@@ -100,8 +105,10 @@
 
 /* 页码信息按钮 */
 .pagination-controls .btn-outline-secondary {
+    min-width: auto;
+    padding: 4px 10px;
+    font-size: 0.875rem;
     background-color: #f8f9fa;
-    min-width: 140px;
     text-align: center;
     color: #495057;
     font-weight: 500;
@@ -122,6 +129,8 @@
     font-weight: 500;
     padding: 8px 12px;
     box-shadow: none !important;
+    background-color: white;
+    transition: none;
 }
 
 .pagination-controls input[type="number"]:focus {
@@ -138,4 +147,131 @@
 
 .pagination-controls .btn-outline-primary:hover {
     background-color: #357abd;
+}
+
+/* ===== 分页信息优化 ===== */
+.pagination-info-wrapper {
+    display: inline-block;
+    padding: 8px 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    color: #495057;
+    font-size: 0.9rem;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin: 15px 0;
+}
+
+/* 类别合计优化 */
+.table-active td {
+    white-space: nowrap !important;
+    vertical-align: middle !important;
+}
+
+.table-active td.text-end {
+    padding-left: 20px;
+    text-align: right !important;
+}
+
+/* 优化合计金额显示 */
+.table tfoot tr.table-active td:last-child {
+    min-width: 130px;
+    padding-right: 15px;
+}
+
+/* 类别合计行整体优化 */
+tr:last-child td.text-center.fw-bold {
+    white-space: nowrap;
+    padding-right: 15px;
+}
+
+/* 所有金额列保持一致 */
+td[style*="text-align:right"], 
+td.text-end, 
+td.text-right,
+.text-end {
+    text-align: right !important;
+    white-space: nowrap !important;
+    min-width: 100px;
+}
+
+/* 跳转框优化 - 完全重新设计为一个独立组件 */
+.pagination-jump-wrapper {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+    background-color: white;
+    height: 32px;
+    margin-left: 10px;
+    overflow: visible;
+    min-width: auto;
+}
+
+.pagination-jump-input-container {
+    padding: 0 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.pagination-jump-wrapper input {
+    width: 42px !important;
+    border: none;
+    text-align: center;
+    font-weight: 500;
+    font-size: 14px;
+    padding: 0;
+    height: 100%;
+    margin: 0;
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+.pagination-jump-wrapper input::-webkit-outer-spin-button,
+.pagination-jump-wrapper input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.pagination-jump-wrapper input:focus {
+    outline: none;
+}
+
+.jump-page-btn {
+    height: 100%;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    padding: 0 12px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    min-width: 54px;
+}
+
+.jump-page-btn:hover {
+    background-color: #357abd;
+}
+
+/* 重新调整分页控件布局 */
+.pagination-controls {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 15px;
+    flex-wrap: nowrap;
+}
+
+/* 确保所有按钮都有一致的高度 */
+.pagination-controls .btn,
+.pagination-controls .btn-group,
+.pagination-jump-wrapper,
+.jump-page-btn {
+    height: 32px;
+    line-height: 1;
 } 
