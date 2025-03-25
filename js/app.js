@@ -58,6 +58,60 @@ document.addEventListener('DOMContentLoaded', function() {
         exportBtn.addEventListener('click', exportResults);
         console.log('已为导出按钮添加事件监听器');
     }
+    
+    // 在页面加载完成后立即修复模态框无障碍问题
+    fixModalAriaAttributes();
+    
+    // 为动态创建的模态框设置监听器
+    document.body.addEventListener('show.bs.modal', function(event) {
+        // 获取触发事件的模态框
+        const modal = event.target;
+        
+        // 移除可能导致问题的aria-hidden属性
+        if (modal.hasAttribute('aria-hidden')) {
+            modal.removeAttribute('aria-hidden');
+        }
+        
+        // 确保tabindex合理
+        if (modal.getAttribute('tabindex') === '-1') {
+            modal.setAttribute('tabindex', '0');
+        }
+        
+        // 修复modal-body上的aria-hidden属性
+        const modalBody = modal.querySelector('.modal-body');
+        if (modalBody && modalBody.hasAttribute('aria-hidden')) {
+            modalBody.removeAttribute('aria-hidden');
+        }
+    }, true);
+    
+    // 在页面加载完成后初始化Bootstrap模态框事件监听器
+    document.addEventListener('DOMContentLoaded', function() {
+        // 监听所有模态框的hidden.bs.modal事件
+        document.body.addEventListener('hidden.bs.modal', function(event) {
+            console.log('模态框关闭事件被触发');
+            
+            // 获取触发事件的模态框
+            const modal = event.target;
+            
+            // 确保模态框在关闭后不会设置aria-hidden属性
+            setTimeout(() => {
+                // 移除aria-hidden属性
+                if (modal.hasAttribute('aria-hidden')) {
+                    console.log('移除关闭后的aria-hidden属性');
+                    modal.removeAttribute('aria-hidden');
+                }
+                
+                // 如果模态框是动态创建的，在关闭后移除它以避免问题
+                if (modal.classList.contains('remove-on-close') && modal.parentNode) {
+                    console.log('移除动态创建的模态框');
+                    modal.parentNode.removeChild(modal);
+                }
+            }, 10);
+        });
+        
+        // 修复所有现有模态框
+        fixModalAriaAttributes();
+    });
 });
 
 // 初始化拖放区域和文件选择按钮
@@ -2703,14 +2757,6 @@ function createAnchorCategoryCharts(anchorName) {
             return;
         }
         
-        // 获取模态框元素
-        const modalElement = document.getElementById('anchor-chart-modal');
-        if (!modalElement) {
-            console.error('找不到主播类目分析模态框');
-            alert('无法显示主播类目分析');
-            return;
-        }
-
         // 销毁现有的图表实例
         if (window.anchorCategoryPieChart instanceof Chart) {
             try {
@@ -2722,23 +2768,11 @@ function createAnchorCategoryCharts(anchorName) {
             window.anchorCategoryPieChart = null;
         }
 
-        // 修改模态框标题
-        const modalTitle = modalElement.querySelector('.modal-title');
-        if (modalTitle) {
-            modalTitle.textContent = `${anchorName} 类目销售分析`;
-        }
-
         // 获取该主播的类目销售数据
         const categoryData = productCategoryAnalysis[anchorName];
         
         // 计算总销售额
         const totalSales = Object.values(categoryData).reduce((sum, value) => sum + value, 0);
-        
-        // 设置总销售额显示
-        const totalSalesElement = document.getElementById('anchor-total-sales');
-        if (totalSalesElement) {
-            totalSalesElement.textContent = `¥${totalSales.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-        }
         
         // 创建类目数据数组，计算百分比，并按占比排序
         const categoriesData = [
@@ -2757,16 +2791,14 @@ function createAnchorCategoryCharts(anchorName) {
         categoriesData.sort((a, b) => b.percentage - a.percentage);
         
         // 生成表格HTML
-        const categoryTable = document.getElementById('anchor-category-table');
-        if (categoryTable) {
-            categoryTable.innerHTML = '';
+        let categoryTableHtml = '';
+        
+        // 添加到表格HTML
+        categoriesData.forEach(category => {
+            const percentageFormatted = category.percentage.toFixed(1);
             
-            // 添加到表格
-            categoriesData.forEach(category => {
-                const percentageFormatted = category.percentage.toFixed(1);
-                
-                const row = document.createElement('tr');
-                row.innerHTML = `
+            categoryTableHtml += `
+                <tr>
                     <td>
                         <div class="d-flex align-items-center">
                             <span class="badge me-2" style="background-color: ${category.color}; width: 15px; height: 15px;"></span>
@@ -2775,240 +2807,292 @@ function createAnchorCategoryCharts(anchorName) {
                     </td>
                     <td class="text-end">¥${category.value.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
                     <td class="text-end">${percentageFormatted}%</td>
-                `;
-                categoryTable.appendChild(row);
-            });
-        }
-        
-        // 创建饼图
-        const ctx = document.getElementById('anchor-category-pie-chart').getContext('2d');
-        
-        // 使用排序后的类目数据创建饼图数据
-        const chartLabels = categoriesData.map(category => category.name);
-        const chartData = categoriesData.map(category => category.value);
-        const chartColors = categoriesData.map(category => category.color);
-        const chartHoverColors = categoriesData.map(category => {
-            switch(category.color) {
-                case '#4e73df': return '#2e59d9';  // 源悦
-                case '#1cc88a': return '#17a673';  // 莼悦
-                case '#f6c23e': return '#f4b619';  // 旺玥
-                case '#e74a3b': return '#d52a1a';  // 皇家
-                default: return category.color;
-            }
+                </tr>
+            `;
         });
         
-        window.anchorCategoryPieChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: chartLabels,
-                datasets: [{
-                    data: chartData,
-                    backgroundColor: chartColors,
-                    hoverBackgroundColor: chartHoverColors,
-                    hoverBorderColor: "rgba(234, 236, 244, 1)",
-                }]
-            },
-            options: {
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20
-                        }
+        // 创建模态框HTML
+        const modalHtml = `
+            <div class="modal fade" id="anchor-chart-modal" tabindex="0">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="anchorChartModalLabel">${anchorName} 类目销售分析</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-7">
+                                    <div class="chart-container mb-3" style="position: relative; height: 300px;">
+                                        <canvas id="anchor-category-pie-chart"></canvas>
+                                    </div>
+                                    <div class="text-center">
+                                        <div class="badge bg-primary rounded-pill fs-6 px-3 py-2">
+                                            总销售额: <span id="anchor-total-sales">¥${totalSales.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-5">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover" id="anchor-category-table">
+                                            <tbody>
+                                                ${categoryTableHtml}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <div class="row w-100">
+                                <div class="col-md-6 mb-2 mb-md-0">
+                                    <button type="button" id="export-anchor-data" class="btn btn-primary w-100">
+                                        <i class="bi bi-download me-1"></i>导出数据
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex">
+                                        <button type="button" id="show-anchor-details" class="btn btn-success flex-grow-1 me-2">
+                                            <i class="bi bi-bar-chart-line me-1"></i>查看详情
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                            <i class="bi bi-x-circle me-1"></i>关闭
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 使用通用模态框管理函数创建模态框
+        const modalInstance = createAndManageModal('anchor-chart-modal', modalHtml, {
+            chartInstance: window.anchorCategoryPieChart,
+            onAfterShow: function(modalElement) {
+                console.log('主播类目销售分析模态框已显示，初始化内容和事件...');
+                
+                // 创建饼图
+                const ctx = document.getElementById('anchor-category-pie-chart').getContext('2d');
+                
+                // 使用排序后的类目数据创建饼图数据
+                const chartLabels = categoriesData.map(category => category.name);
+                const chartData = categoriesData.map(category => category.value);
+                const chartColors = categoriesData.map(category => category.color);
+                const chartHoverColors = categoriesData.map(category => {
+                    switch(category.color) {
+                        case '#4e73df': return '#2e59d9';  // 源悦
+                        case '#1cc88a': return '#17a673';  // 莼悦
+                        case '#f6c23e': return '#f4b619';  // 旺玥
+                        case '#e74a3b': return '#d52a1a';  // 皇家
+                        default: return category.color;
+                    }
+                });
+                
+                window.anchorCategoryPieChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{
+                            data: chartData,
+                            backgroundColor: chartColors,
+                            hoverBackgroundColor: chartHoverColors,
+                            hoverBorderColor: "rgba(234, 236, 244, 1)",
+                        }]
                     },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                const value = context.raw;
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                return `¥${value.toLocaleString('zh-CN')} (${percentage}%)`;
+                    options: {
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const value = context.raw;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                        return `¥${value.toLocaleString('zh-CN')} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '70%',
+                        elements: {
+                            arc: {
+                                borderWidth: 0
                             }
                         }
                     }
-                },
-                cutout: '70%',
-                elements: {
-                    arc: {
-                        borderWidth: 0
-                    }
+                });
+                
+                // 为导出数据按钮添加事件处理
+                const exportDataBtn = document.getElementById('export-anchor-data');
+                if (exportDataBtn) {
+                    exportDataBtn.onclick = function() {
+                        // 创建导出数据
+                        const exportData = {
+                            anchor: anchorName,
+                            categories: {
+                                '源悦类': categoryData['源悦'] || 0,
+                                '莼悦类': categoryData['莼悦'] || 0,
+                                '旺玥类': categoryData['旺玥'] || 0,
+                                '皇家类': categoryData['皇家'] || 0
+                            },
+                            totalSales: totalSales,
+                            date: new Date().toLocaleDateString('zh-CN')
+                        };
+                        
+                        // 转换为CSV字符串
+                        const csvContent = "数据:,金额(元),占比\n" + 
+                            Object.entries(exportData.categories).map(([key, value]) => {
+                                const percentage = totalSales > 0 ? ((value / totalSales) * 100).toFixed(1) : '0.0';
+                                return `${key},${value.toFixed(2)},${percentage}%`;
+                            }).join('\n');
+                        
+                        // 创建下载链接
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.setAttribute('href', url);
+                        link.setAttribute('download', `${anchorName}-类目销售数据-${new Date().toLocaleDateString('zh-CN')}.csv`);
+                        link.style.visibility = 'hidden';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        // 显示提示
+                        showNotice('success', '数据导出成功！');
+                    };
+                }
+                
+                // 查看详情按钮
+                const showDetailsBtn = document.getElementById('show-anchor-details');
+                if (showDetailsBtn) {
+                    showDetailsBtn.onclick = function() {
+                        // 获取该主播的所有订单
+                        if (!window.analysisResults) {
+                            alert('无法获取分析结果，请重新分析数据');
+                            return;
+                        }
+                        
+                        // 筛选出该主播的所有订单
+                        const anchorOrders = window.analysisResults.filter(result => {
+                            // 检查anchor是否为对象或字符串，兼容不同数据结构
+                            if (result.anchor) {
+                                if (typeof result.anchor === 'object' && result.anchor.name) {
+                                    return result.anchor.name === anchorName;
+                                } else if (typeof result.anchor === 'string') {
+                                    return result.anchor.trim() === anchorName;
+                                }
+                            }
+                            return false;
+                        });
+                        
+                        if (anchorOrders.length === 0) {
+                            alert(`未找到${anchorName}的订单记录`);
+                            return;
+                        }
+                        
+                        // 按照商品类别分组订单
+                        const ordersByCategory = {
+                            '旺玥': [],
+                            '源悦': [],
+                            '莼悦': [],
+                            '皇家': []
+                        };
+                        
+                        // 记录日志以便调试
+                        console.log(`找到${anchorName}的订单:`, anchorOrders.length);
+                        
+                        // 手动分类订单
+                        anchorOrders.forEach(order => {
+                            const saleInfo = extractSaleInfo(order.sale);
+                            const productName = saleInfo.product || '';
+                            
+                            console.log('订单商品名称:', productName);
+                            
+                            // 分类规则重新设计，确保所有订单都能分类成功
+                            if (productName.includes('旺玥') || productName.includes('旺悦')) {
+                                // 包含旺玥或旺悦的商品归类为旺玥类
+                                ordersByCategory['旺玥'].push(order);
+                                console.log(`订单分类为旺玥类: ${productName}`);
+                            } 
+                            else if (productName.includes('莼悦') || productName.includes('纯悦')) {
+                                // 包含莼悦或纯悦的商品归类为莼悦类
+                                ordersByCategory['莼悦'].push(order);
+                                console.log(`订单分类为莼悦类: ${productName}`);
+                            } 
+                            else if (productName.includes('源悦') || productName.includes('原悦')) {
+                                // 包含源悦或原悦的商品归类为源悦类
+                                ordersByCategory['源悦'].push(order);
+                                console.log(`订单分类为源悦类: ${productName}`);
+                            } 
+                            else if (productName.includes('皇家') || 
+                                    productName.includes('美素佳儿') || 
+                                    productName.includes('皇家美素') || 
+                                    productName.includes('荷兰皇家') || 
+                                    productName.toLowerCase().includes('friso')) {
+                                // 皇家类产品
+                                ordersByCategory['皇家'].push(order);
+                                console.log(`订单分类为皇家类: ${productName}`);
+                            } 
+                            else if (productName.includes('美素') || 
+                                    productName.includes('Friso') || 
+                                    productName.includes('FRISO')) {
+                                // 美素佳儿相关产品
+                                ordersByCategory['皇家'].push(order);
+                                console.log(`订单分类为皇家类(美素): ${productName}`);
+                            } 
+                            else if (productName.includes('粉') && productName.includes('婴') || 
+                                    productName.includes('奶') && productName.includes('婴')) {
+                                // 明确的婴儿奶粉默认归为源悦类
+                                ordersByCategory['源悦'].push(order);
+                                console.log(`订单默认分类为源悦类(婴儿奶粉): ${productName}`);
+                            }
+                            else if (productName.includes('小罐馋') || productName.includes('小理想')) {
+                                // 特定品牌归为旺玥类
+                                ordersByCategory['旺玥'].push(order);
+                                console.log(`订单分类为旺玥类(特定品牌): ${productName}`);
+                            }
+                            else {
+                                // 检查商品名称中是否包含数字和"段"，表示奶粉段数
+                                const hasStage = /[1-4]段/.test(productName);
+                                if (hasStage) {
+                                    // 含有段数的奶粉产品归类为源悦类
+                                    ordersByCategory['源悦'].push(order);
+                                    console.log(`订单分类为源悦类(带段数奶粉): ${productName}`);
+                                } else {
+                                    // 最后的默认分类，归为旺玥类（非奶粉类产品）
+                                    ordersByCategory['旺玥'].push(order);
+                                    console.log(`订单默认分类为旺玥类(其他): ${productName}`);
+                                }
+                            }
+                        });
+                        
+                        // 日志输出分类结果
+                        console.log('分类结果:', {
+                            '旺玥': ordersByCategory['旺玥'].length,
+                            '源悦': ordersByCategory['源悦'].length,
+                            '莼悦': ordersByCategory['莼悦'].length,
+                            '皇家': ordersByCategory['皇家'].length
+                        });
+                        
+                        // 创建并显示模态框，同时隐藏当前模态框
+                        modalInstance.modal.hide();
+                        setTimeout(() => {
+                            // 确保当前模态框完全关闭后再打开新模态框
+                            createOrderDetailModal(anchorName, ordersByCategory);
+                        }, 400);
+                    };
                 }
             }
         });
-        
-        // 显示模态框
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-        
-        // 为新增按钮添加事件处理
-        // 导出数据按钮
-        const exportDataBtn = document.getElementById('export-anchor-data');
-        if (exportDataBtn) {
-            exportDataBtn.onclick = function() {
-                // 创建导出数据
-                const exportData = {
-                    anchor: anchorName,
-                    categories: {
-                        '源悦类': categoryData['源悦'] || 0,
-                        '莼悦类': categoryData['莼悦'] || 0,
-                        '旺玥类': categoryData['旺玥'] || 0,
-                        '皇家类': categoryData['皇家'] || 0
-                    },
-                    totalSales: totalSales,
-                    date: new Date().toLocaleDateString('zh-CN')
-                };
-                
-                // 转换为CSV字符串
-                const csvContent = "数据:,金额(元),占比\n" + 
-                    Object.entries(exportData.categories).map(([key, value]) => {
-                        const percentage = totalSales > 0 ? ((value / totalSales) * 100).toFixed(1) : '0.0';
-                        return `${key},${value.toFixed(2)},${percentage}%`;
-                    }).join('\n');
-                
-                // 创建下载链接
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', `${anchorName}-类目销售数据-${new Date().toLocaleDateString('zh-CN')}.csv`);
-                link.style.visibility = 'hidden';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                
-                // 显示提示
-                showNotice('success', '数据导出成功！');
-            };
-        }
-        
-        // 查看详情按钮
-        const showDetailsBtn = document.getElementById('show-anchor-details');
-        if (showDetailsBtn) {
-            showDetailsBtn.onclick = function() {
-                // 获取该主播的所有订单
-                if (!window.analysisResults) {
-                    alert('无法获取分析结果，请重新分析数据');
-                    return;
-                }
-                
-                // 筛选出该主播的所有订单
-                const anchorOrders = window.analysisResults.filter(result => {
-                    // 检查anchor是否为对象或字符串，兼容不同数据结构
-                    if (result.anchor) {
-                        if (typeof result.anchor === 'object' && result.anchor.name) {
-                            return result.anchor.name === anchorName;
-                        } else if (typeof result.anchor === 'string') {
-                            return result.anchor.trim() === anchorName;
-                        }
-                    }
-                    return false;
-                });
-                
-                if (anchorOrders.length === 0) {
-                    alert(`未找到${anchorName}的订单记录`);
-                    return;
-                }
-                
-                // 按照商品类别分组订单
-                const ordersByCategory = {
-                    '旺玥': [],
-                    '源悦': [],
-                    '莼悦': [],
-                    '皇家': []
-                };
-                
-                // 记录日志以便调试
-                console.log(`找到${anchorName}的订单:`, anchorOrders.length);
-                
-                // 手动分类订单
-                anchorOrders.forEach(order => {
-                    const saleInfo = extractSaleInfo(order.sale);
-                    const productName = saleInfo.product || '';
-                    
-                    console.log('订单商品名称:', productName);
-                    
-                    // 分类规则重新设计，确保所有订单都能分类成功
-                    if (productName.includes('旺玥') || productName.includes('旺悦')) {
-                        // 包含旺玥或旺悦的商品归类为旺玥类
-                        ordersByCategory['旺玥'].push(order);
-                        console.log(`订单分类为旺玥类: ${productName}`);
-                    } 
-                    else if (productName.includes('莼悦') || productName.includes('纯悦')) {
-                        // 包含莼悦或纯悦的商品归类为莼悦类
-                        ordersByCategory['莼悦'].push(order);
-                        console.log(`订单分类为莼悦类: ${productName}`);
-                    } 
-                    else if (productName.includes('源悦') || productName.includes('原悦')) {
-                        // 包含源悦或原悦的商品归类为源悦类
-                        ordersByCategory['源悦'].push(order);
-                        console.log(`订单分类为源悦类: ${productName}`);
-                    } 
-                    else if (productName.includes('皇家') || 
-                             productName.includes('美素佳儿') || 
-                             productName.includes('皇家美素') || 
-                             productName.includes('荷兰皇家') || 
-                             productName.toLowerCase().includes('friso')) {
-                        // 皇家类产品
-                        ordersByCategory['皇家'].push(order);
-                        console.log(`订单分类为皇家类: ${productName}`);
-                    } 
-                    else if (productName.includes('美素') || 
-                             productName.includes('Friso') || 
-                             productName.includes('FRISO')) {
-                        // 美素佳儿相关产品
-                        ordersByCategory['皇家'].push(order);
-                        console.log(`订单分类为皇家类(美素): ${productName}`);
-                    } 
-                    else if (productName.includes('粉') && productName.includes('婴') || 
-                             productName.includes('奶') && productName.includes('婴')) {
-                        // 明确的婴儿奶粉默认归为源悦类
-                        ordersByCategory['源悦'].push(order);
-                        console.log(`订单默认分类为源悦类(婴儿奶粉): ${productName}`);
-                    }
-                    else if (productName.includes('小罐馋') || productName.includes('小理想')) {
-                        // 特定品牌归为旺玥类
-                        ordersByCategory['旺玥'].push(order);
-                        console.log(`订单分类为旺玥类(特定品牌): ${productName}`);
-                    }
-                    else {
-                        // 检查商品名称中是否包含数字和"段"，表示奶粉段数
-                        const hasStage = /[1-4]段/.test(productName);
-                        if (hasStage) {
-                            // 含有段数的奶粉产品归类为源悦类
-                            ordersByCategory['源悦'].push(order);
-                            console.log(`订单分类为源悦类(带段数奶粉): ${productName}`);
-                        } else {
-                            // 最后的默认分类，归为旺玥类（非奶粉类产品）
-                            ordersByCategory['旺玥'].push(order);
-                            console.log(`订单默认分类为旺玥类(其他): ${productName}`);
-                        }
-                    }
-                });
-                
-                // 日志输出分类结果
-                console.log('分类结果:', {
-                    '旺玥': ordersByCategory['旺玥'].length,
-                    '源悦': ordersByCategory['源悦'].length,
-                    '莼悦': ordersByCategory['莼悦'].length,
-                    '皇家': ordersByCategory['皇家'].length
-                });
-                
-                // 创建并显示模态框
-                createOrderDetailModal(anchorName, ordersByCategory);
-            };
-        }
-        
-        // 添加到报告按钮
-        const addToReportBtn = document.getElementById('add-to-report-btn');
-        if (addToReportBtn) {
-            addToReportBtn.onclick = function() {
-                // 显示添加成功的提示
-                showNotice('success', `已将${anchorName}的销售数据添加到报告`);
-                // 这里可以实现将当前数据添加到报告的逻辑
-            };
-        }
         
     } catch (error) {
         console.error('创建主播类目销售图表时出错:', error);
@@ -3016,302 +3100,262 @@ function createAnchorCategoryCharts(anchorName) {
     }
 }
 
-// 创建订单明细模态框 - 单独抽出函数以提高可维护性
+// 创建订单明细模态框 - 重写为使用通用模态框管理函数
 function createOrderDetailModal(anchorName, ordersByCategory) {
     try {
         console.log('创建订单明细模态框，类别数据:', ordersByCategory);
         
-        // 为保持分组的可见性，定义类目顺序
-        const CATEGORY_ORDER = ['旺玥', '源悦', '莼悦', '皇家'];
+        // 创建分页信息
+        const ordersPerPage = 8;
+        const pageInfo = {};
         
-        // 分页设置
-        const ordersPerPage = 8; // 每页显示的订单数
-        const categoryPageInfo = {};
-        
-        // 初始化每个类别的分页信息
-        CATEGORY_ORDER.forEach(category => {
-            if (ordersByCategory[category] && ordersByCategory[category].length > 0) {
-                categoryPageInfo[category] = {
+        // 为每个类别初始化分页信息
+        const categories = ['旺玥', '源悦', '莼悦', '皇家'];
+        categories.forEach(category => {
+            const orders = ordersByCategory[category] || [];
+            if (orders.length > 0) {
+                pageInfo[category] = {
                     currentPage: 1,
-                    totalPages: Math.ceil(ordersByCategory[category].length / ordersPerPage)
+                    totalPages: Math.ceil(orders.length / ordersPerPage)
                 };
-                console.log(`${category}类订单：${ordersByCategory[category].length}条，共${categoryPageInfo[category].totalPages}页`);
             }
         });
-    
-        // 清理old modals to avoid conflicts
-        const oldModals = document.querySelectorAll('.modal.show');
-        oldModals.forEach(modal => {
-            try {
-                const bsModal = bootstrap.Modal.getInstance(modal);
-                if (bsModal) bsModal.hide();
-            } catch (e) {
-                console.warn('Modal hide error:', e);
-            }
-        });
-    
-        // 移除任何现有的明细模态框
-        try {
-            const existingModal = document.getElementById('anchor-details-modal');
-            if (existingModal) {
-                if (existingModal.parentNode) {
-                    existingModal.parentNode.removeChild(existingModal);
-                }
-            }
-        } catch (e) {
-            console.warn('清理旧模态框错误:', e);
-        }
         
-        // 准备一个简单的DIV容器来依次显示各类别的订单
-        let modalHTML = `
-            <div class="modal fade" id="anchor-details-modal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+        // 构建模态框HTML
+        let tabsHtml = '';
+        let tabContentHtml = '';
+        let firstTab = true;
+        
+        categories.forEach(category => {
+            // 只处理有订单的类别
+            const orders = ordersByCategory[category] || [];
+            if (orders.length === 0) return;
+            
+            // 创建唯一ID，避免特殊字符
+            const categoryId = `cat-${category.replace(/[\W]/g, '')}`;
+            
+            // 创建标签HTML
+            tabsHtml += `
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link ${firstTab ? 'active' : ''}" 
+                            id="tab-${categoryId}" 
+                            data-bs-toggle="tab" 
+                            data-bs-target="#panel-${categoryId}" 
+                            type="button" 
+                            role="tab"
+                            data-category="${category}">
+                        ${category}类 (${orders.length})
+                    </button>
+                </li>
+            `;
+            
+            // 创建内容面板HTML
+            tabContentHtml += `
+                <div class="tab-pane fade ${firstTab ? 'show active' : ''}" id="panel-${categoryId}" role="tabpanel">
+                    <h6 class="mb-3">${category}类订单明细 (共${orders.length}条)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead>
+                                <tr>
+                                    <th>商品名称</th>
+                                    <th>规格</th>
+                                    <th>数量</th>
+                                    <th>金额</th>
+                                    <th>订单时间</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-${categoryId}"></tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <div>
+                            <span class="badge bg-primary" id="page-info-${categoryId}">
+                                第 ${pageInfo[category].currentPage} 页，共 ${pageInfo[category].totalPages} 页
+                            </span>
+                        </div>
+                        <div>
+                            <span class="badge bg-success">
+                                类别合计: ¥${orders.reduce((sum, order) => {
+                                    const info = extractSaleInfo(order.sale);
+                                    return sum + (parseFloat(info.price) || 0);
+                                }, 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-center mt-2">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-sm btn-outline-primary prev-btn" 
+                                    data-category="${category}" ${pageInfo[category].currentPage <= 1 ? 'disabled' : ''}>
+                                <i class="bi bi-chevron-left"></i> 上一页
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-primary next-btn" 
+                                    data-category="${category}" ${pageInfo[category].currentPage >= pageInfo[category].totalPages ? 'disabled' : ''}>
+                                下一页 <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            firstTab = false;
+        });
+        
+        // 完整的模态框HTML
+        const modalHtml = `
+            <div class="modal fade" id="anchor-details-modal" tabindex="0">
                 <div class="modal-dialog modal-xl">
                     <div class="modal-content">
                         <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="modalLabel">${anchorName} 订单明细</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            <h5 class="modal-title">${anchorName} 订单明细</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="alert alert-info mb-3">
                                 共找到 ${Object.values(ordersByCategory).flat().length} 条订单记录
                             </div>
-                            
-                            <!-- 标签页导航栏 -->
-                            <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">`;
-        
-        // 创建标签页
-        let firstCategory = true;
-        CATEGORY_ORDER.forEach(category => {
-            if (ordersByCategory[category] && ordersByCategory[category].length > 0) {
-                const categoryId = category.replace(/[^a-zA-Z0-9]/g, '');
-                modalHTML += `
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link ${firstCategory ? 'active' : ''}" 
-                            id="${categoryId}-tab" 
-                            data-category="${category}"
-                            data-bs-toggle="tab" 
-                            data-bs-target="#${categoryId}-panel" 
-                            type="button">
-                            ${category}类 (${ordersByCategory[category].length})
-                        </button>
-                    </li>`;
-                firstCategory = false;
-            }
-        });
-        
-        modalHTML += `
+                            <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
+                                ${tabsHtml}
                             </ul>
-                            
-                            <!-- 标签内容区域 -->
-                            <div class="tab-content" id="orderTabContent">`;
-        
-        // 创建每个类别的内容面板
-        firstCategory = true;
-        CATEGORY_ORDER.forEach(category => {
-            if (ordersByCategory[category] && ordersByCategory[category].length > 0) {
-                const categoryId = category.replace(/[^a-zA-Z0-9]/g, '');
-                const currentPage = categoryPageInfo[category].currentPage;
-                const totalPages = categoryPageInfo[category].totalPages;
-                
-                // 为每个类别创建一个显示面板 - 确保ID和data-bs-target匹配
-                modalHTML += `
-                    <div class="tab-pane ${firstCategory ? 'show active' : ''}" id="${categoryId}-panel">
-                        <h5 class="mb-3">${category}类订单明细（共${ordersByCategory[category].length}条）</h5>
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>商品名称</th>
-                                        <th>规格</th>
-                                        <th>数量</th>
-                                        <th>金额</th>
-                                        <th>订单时间</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="${categoryId}-tbody">`;
-                
-                // 获取当前页的订单
-                const startIndex = (currentPage - 1) * ordersPerPage;
-                const endIndex = Math.min(startIndex + ordersPerPage, ordersByCategory[category].length);
-                const pageOrders = ordersByCategory[category].slice(startIndex, endIndex);
-                
-                // 添加订单行
-                pageOrders.forEach(order => {
-                    const saleInfo = extractSaleInfo(order.sale);
-                    
-                    // 处理订单时间显示
-                    let timeDisplay = '';
-                    if (order.date && order.time) {
-                        timeDisplay = `${order.date} ${order.time}`;
-                    } else {
-                        timeDisplay = saleInfo.time || '-';
-                    }
-                    
-                    modalHTML += `
-                        <tr>
-                            <td>${saleInfo.product || '-'}</td>
-                            <td>${saleInfo.spec || '-'}</td>
-                            <td class="text-center">${saleInfo.quantity || '-'}</td>
-                            <td class="text-end">¥${(parseFloat(saleInfo.price) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                            <td>${timeDisplay}</td>
-                        </tr>`;
-                });
-                
-                // 计算类别总金额
-                const categoryTotal = ordersByCategory[category].reduce((total, order) => {
-                    const saleInfo = extractSaleInfo(order.sale);
-                    return total + (parseFloat(saleInfo.price) || 0);
-                }, 0);
-                
-                // 添加分页和总计
-                modalHTML += `
-                                </tbody>
-                            </table>
-                            <div class="d-flex justify-content-between align-items-center mt-3">
-                                <div>
-                                    <span class="badge bg-primary">第 ${currentPage} 页，共 ${totalPages} 页</span>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-success">类别合计: ¥${categoryTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                </div>
-                            </div>
-                            
-                            <!-- 分页按钮 -->
-                            <div class="d-flex justify-content-center mt-3">
-                                <div class="btn-group">
-                                    <button type="button" class="btn btn-outline-primary btn-sm prev-page" 
-                                            data-category="${category}" ${currentPage <= 1 ? 'disabled' : ''}>
-                                        <i class="bi bi-chevron-left"></i> 上一页
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm next-page" 
-                                            data-category="${category}" ${currentPage >= totalPages ? 'disabled' : ''}>
-                                        下一页 <i class="bi bi-chevron-right"></i>
-                                    </button>
-                                </div>
+                            <div class="tab-content mt-3" id="categoryTabContent">
+                                ${tabContentHtml}
                             </div>
                         </div>
-                    </div>`;
-                
-                firstCategory = false;
-            }
-        });
-        
-        // 完成模态框HTML
-        modalHTML += `
-                            </div>
-                        </div>
-                        <div class="modal-footer">
+                        <div class="modal-footer justify-content-between">
+                            <button type="button" id="export-orders-excel" class="btn btn-success">
+                                <i class="bi bi-file-excel me-1"></i> 导出订单
+                            </button>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                         </div>
                     </div>
                 </div>
-            </div>`;
+            </div>
+        `;
         
-        // 添加模态框到DOM
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHTML;
-        document.body.appendChild(modalContainer.firstElementChild);
-        
-        // 显示模态框
-        const modalEl = document.getElementById('anchor-details-modal');
-        const modal = new bootstrap.Modal(modalEl);
-        modal.show();
-        
-        // 添加分页按钮事件处理
-        modalEl.querySelectorAll('.prev-page, .next-page').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const category = this.getAttribute('data-category');
-                const isPrev = this.classList.contains('prev-page');
+        // 使用通用模态框管理函数创建模态框
+        const modalInstance = createAndManageModal('anchor-details-modal', modalHtml, {
+            onAfterShow: function(modalElement) {
+                console.log('订单详情模态框已显示，初始化内容和事件...');
                 
-                // 更新当前页码
-                if (isPrev) {
-                    categoryPageInfo[category].currentPage--;
+                // 为每个类别加载第一页订单
+                categories.forEach(category => {
+                    const orders = ordersByCategory[category] || [];
+                    if (orders.length === 0) return;
+                    
+                    const categoryId = `cat-${category.replace(/[\W]/g, '')}`;
+                    loadOrdersPage(category, categoryId, orders, pageInfo[category].currentPage, ordersPerPage);
+                });
+                
+                // 添加分页按钮事件
+                modalElement.querySelectorAll('.prev-btn, .next-btn').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const category = this.getAttribute('data-category');
+                        const isPrev = this.classList.contains('prev-btn');
+                        
+                        // 更新页码
+                        if (isPrev) {
+                            pageInfo[category].currentPage--;
+                        } else {
+                            pageInfo[category].currentPage++;
+                        }
+                        
+                        // 获取当前类别的ID和订单
+                        const categoryId = `cat-${category.replace(/[\W]/g, '')}`;
+                        const orders = ordersByCategory[category] || [];
+                        
+                        // 重新加载订单
+                        loadOrdersPage(category, categoryId, orders, pageInfo[category].currentPage, ordersPerPage);
+                        
+                        // 更新分页信息和按钮状态
+                        updatePaginationInfo(category, categoryId, pageInfo[category]);
+                    });
+                });
+                
+                // 添加导出按钮事件
+                const exportExcelBtn = modalElement.querySelector('#export-orders-excel');
+                if (exportExcelBtn) {
+                    exportExcelBtn.addEventListener('click', function() {
+                        try {
+                            console.log('开始导出Excel...');
+                            showLoading('正在生成Excel文件...');
+                            setTimeout(() => {
+                                exportOrdersToExcel(anchorName, ordersByCategory);
+                                hideLoading();
+                            }, 100);
+                        } catch (err) {
+                            console.error('导出订单时出错:', err);
+                            hideLoading();
+                            showNotice('danger', '导出订单失败，请稍后重试');
+                        }
+                    });
+                }
+            }
+        });
+        
+        // 定义加载订单页面的函数
+        function loadOrdersPage(category, categoryId, orders, page, pageSize) {
+            const tbody = document.getElementById(`tbody-${categoryId}`);
+            if (!tbody) return;
+            
+            // 清空表格
+            tbody.innerHTML = '';
+            
+            // 计算当前页的订单
+            const startIndex = (page - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, orders.length);
+            const pageOrders = orders.slice(startIndex, endIndex);
+            
+            // 添加订单行
+            pageOrders.forEach(order => {
+                const saleInfo = extractSaleInfo(order.sale);
+                
+                // 处理订单时间显示
+                let timeDisplay = '';
+                if (order.date && order.time) {
+                    timeDisplay = `${order.date} ${order.time}`;
                 } else {
-                    categoryPageInfo[category].currentPage++;
+                    timeDisplay = saleInfo.time || '-';
                 }
                 
-                // 重新创建模态框以显示新页面的订单
-                modal.hide();
-                modalEl.addEventListener('hidden.bs.modal', function() {
-                    createOrderDetailModal(anchorName, ordersByCategory);
-                }, { once: true });
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${saleInfo.product || '-'}</td>
+                    <td>${saleInfo.spec || '-'}</td>
+                    <td class="text-center">${saleInfo.quantity || '-'}</td>
+                    <td class="text-end">¥${(parseFloat(saleInfo.price) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2})}</td>
+                    <td>${timeDisplay}</td>
+                `;
+                tbody.appendChild(tr);
             });
-        });
+            
+            console.log(`${category}类：已加载第 ${page} 页，${pageOrders.length} 条订单`);
+        }
         
-        // 添加关闭事件处理
-        modalEl.addEventListener('hidden.bs.modal', function() {
-            if (this.parentNode) {
-                this.parentNode.removeChild(this);
+        // 更新分页信息和按钮状态
+        function updatePaginationInfo(category, categoryId, pageData) {
+            // 获取模态框元素
+            const modalElement = document.getElementById('anchor-details-modal');
+            if (!modalElement) return;
+            
+            // 更新分页文本
+            const pageInfo = document.getElementById(`page-info-${categoryId}`);
+            if (pageInfo) {
+                pageInfo.textContent = `第 ${pageData.currentPage} 页，共 ${pageData.totalPages} 页`;
             }
-        });
+            
+            // 更新按钮状态
+            const prevBtn = modalElement.querySelector(`button.prev-btn[data-category="${category}"]`);
+            const nextBtn = modalElement.querySelector(`button.next-btn[data-category="${category}"]`);
+            
+            if (prevBtn) prevBtn.disabled = pageData.currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = pageData.currentPage >= pageData.totalPages;
+        }
         
-        // 激活Bootstrap的tab功能
-        modalEl.addEventListener('shown.bs.modal', function() {
-            console.log('模态框显示完成，初始化标签页切换功能');
-            
-            // 诊断所有标签和面板
-            const tabs = modalEl.querySelectorAll('.nav-link');
-            const panes = modalEl.querySelectorAll('.tab-pane');
-            
-            console.log('所有标签按钮:');
-            tabs.forEach(tab => {
-                console.log(`- 标签ID: ${tab.id}, 目标: ${tab.getAttribute('data-bs-target')}, 内容: ${tab.textContent.trim()}`);
-            });
-            
-            console.log('所有内容面板:');
-            panes.forEach(pane => {
-                console.log(`- 面板ID: ${pane.id}, 内容行数: ${pane.querySelectorAll('tbody tr').length}`);
-            });
-            
-            // 为每个标签添加点击事件
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function() {
-                    console.log(`点击标签: ${this.textContent.trim()}`);
-                    const targetId = this.getAttribute('data-bs-target');
-                    const category = this.getAttribute('data-category');
-                    
-                    // 将所有标签设为非激活状态
-                    tabs.forEach(t => {
-                        t.classList.remove('active');
-                        t.setAttribute('aria-selected', 'false');
-                    });
-                    
-                    // 激活当前标签
-                    this.classList.add('active');
-                    this.setAttribute('aria-selected', 'true');
-                    
-                    // 隐藏所有面板
-                    panes.forEach(pane => {
-                        pane.classList.remove('show', 'active');
-                    });
-                    
-                    // 显示目标面板
-                    const targetPane = document.querySelector(targetId);
-                    if (targetPane) {
-                        targetPane.classList.add('show', 'active');
-                        console.log(`显示面板: ${targetId}, 类别: ${category}`);
-                        
-                        // 打印面板内容信息
-                        const rows = targetPane.querySelectorAll('tbody tr');
-                        if (rows.length > 0) {
-                            const firstProduct = rows[0].querySelector('td:first-child').textContent;
-                            console.log(`面板显示第一个商品: ${firstProduct}, 共${rows.length}条订单`);
-                        }
-                    } else {
-                        console.error(`找不到面板: ${targetId}`);
-                    }
-                });
-            });
-            
-            // 默认点击第一个标签
-            if (tabs.length > 0) {
-                tabs[0].click();
-            }
-        });
+        return modalInstance;
         
     } catch (error) {
         console.error('创建订单明细模态框时出错:', error);
         alert('显示订单明细时出错，请重试');
+        return null;
     }
 }
 
@@ -4302,6 +4346,13 @@ function fixModalAriaAttributes() {
             modal.removeAttribute('aria-hidden');
         }
         
+        // 修复modal-body的无障碍问题
+        const modalBody = modal.querySelector('.modal-body');
+        if (modalBody && modalBody.hasAttribute('aria-hidden')) {
+            console.log('移除modal-body的aria-hidden属性');
+            modalBody.removeAttribute('aria-hidden');
+        }
+        
         // 获取该模态框的所有关闭按钮
         const closeButtons = modal.querySelectorAll('[data-bs-dismiss="modal"]');
         
@@ -4405,8 +4456,7 @@ function fixModalAriaAttributes() {
                 }
             }
             
-            // 设置aria-hidden属性
-            modal.setAttribute('aria-hidden', 'true');
+            // 移除设置aria-hidden属性的代码
             
             // 确保模态框完全关闭并清理
             setTimeout(() => {
@@ -4566,4 +4616,502 @@ function handleDrop(e) {
     } else {
         console.warn('没有接收到文件');
     }
+}
+
+/**
+ * 导出主播订单详情到Excel
+ * @param {string} anchorName 主播名称
+ * @param {Object} ordersByCategory 按类别分组的订单
+ */
+function exportAnchorOrders(anchorName, ordersByCategory) {
+    try {
+        // 创建工作簿
+        const workbook = XLSX.utils.book_new();
+        
+        // 创建一个总表，包含所有订单
+        const allOrders = Object.values(ordersByCategory).flat();
+        const allOrdersSheet = createOrdersSheet(allOrders, `全部订单（${allOrders.length}条）`);
+        XLSX.utils.book_append_sheet(workbook, allOrdersSheet, '全部订单');
+        
+        // 为每个类别创建单独的工作表
+        Object.entries(ordersByCategory).forEach(([category, orders]) => {
+            if (orders.length > 0) {
+                const sheet = createOrdersSheet(orders, `${category}类订单（${orders.length}条）`);
+                XLSX.utils.book_append_sheet(workbook, sheet, `${category}类`);
+            }
+        });
+        
+        // 生成Excel文件并下载
+        const fileName = `${anchorName}-订单明细-${new Date().toLocaleDateString('zh-CN')}.xlsx`;
+        XLSX.writeFile(workbook, fileName);
+        
+        // 显示导出成功提示
+        showNotice('success', `已成功导出 ${anchorName} 的订单明细`);
+    } catch (error) {
+        console.error('导出订单时出错:', error);
+        showNotice('danger', '导出订单时出错，请重试');
+    }
+}
+
+/**
+ * 创建订单工作表
+ * @param {Array} orders 订单数组
+ * @param {string} title 工作表标题
+ * @returns {Object} 工作表对象
+ */
+function createOrdersSheet(orders, title) {
+    // 创建表头
+    const headers = ['商品名称', '规格', '数量', '金额', '订单时间'];
+    
+    // 准备数据
+    const data = [
+        headers,
+        ...orders.map(order => {
+            const saleInfo = extractSaleInfo(order.sale);
+            
+            // 处理订单时间
+            let timeDisplay = '';
+            if (order.date && order.time) {
+                timeDisplay = `${order.date} ${order.time}`;
+            } else {
+                timeDisplay = saleInfo.time || '-';
+            }
+            
+            return [
+                saleInfo.product || '-',
+                saleInfo.spec || '-',
+                saleInfo.quantity || '-',
+                parseFloat(saleInfo.price) || 0,
+                timeDisplay
+            ];
+        })
+    ];
+    
+    // 计算总金额
+    const totalAmount = orders.reduce((sum, order) => {
+        const saleInfo = extractSaleInfo(order.sale);
+        return sum + (parseFloat(saleInfo.price) || 0);
+    }, 0);
+    
+    // 添加合计行
+    data.push(['合计', '', '', totalAmount, '']);
+    
+    // 创建工作表
+    const sheet = XLSX.utils.aoa_to_sheet(data);
+    
+    // 设置列宽
+    const colWidths = [
+        { wch: 40 },  // 商品名称
+        { wch: 20 },  // 规格
+        { wch: 10 },  // 数量
+        { wch: 15 },  // 金额
+        { wch: 25 }   // 订单时间
+    ];
+    sheet['!cols'] = colWidths;
+    
+    return sheet;
+}
+
+/**
+ * 导出订单数据到Excel文件
+ * @param {string} anchorName 主播名称
+ * @param {Object} ordersByCategory 按类别分组的订单数据
+ */
+function exportOrdersToExcel(anchorName, ordersByCategory) {
+    try {
+        console.log('正在创建Excel文件...');
+        
+        // 创建工作簿
+        const workbook = XLSX.utils.book_new();
+        
+        // 首先创建包含所有订单的工作表
+        const allOrders = Object.values(ordersByCategory).flat();
+        
+        if (allOrders.length === 0) {
+            showNotice('warning', '没有可导出的订单数据');
+            return;
+        }
+        
+        // 准备表头
+        const headers = ['商品名称', '规格', '数量', '金额(元)', '订单时间'];
+        
+        // 准备数据
+        const allOrdersData = [
+            headers,
+            ...allOrders.map(order => {
+                const saleInfo = extractSaleInfo(order.sale);
+                
+                // 处理订单时间
+                let timeDisplay = '';
+                if (order.date && order.time) {
+                    timeDisplay = `${order.date} ${order.time}`;
+                } else {
+                    timeDisplay = saleInfo.time || '-';
+                }
+                
+                return [
+                    saleInfo.product || '-',
+                    saleInfo.spec || '-',
+                    saleInfo.quantity || '-',
+                    parseFloat(saleInfo.price) || 0,
+                    timeDisplay
+                ];
+            })
+        ];
+        
+        // 添加合计行
+        const totalAmount = allOrders.reduce((sum, order) => {
+            const saleInfo = extractSaleInfo(order.sale);
+            return sum + (parseFloat(saleInfo.price) || 0);
+        }, 0);
+        
+        allOrdersData.push(['合计', '', '', totalAmount, '']);
+        
+        // 创建所有订单的工作表
+        const allOrdersSheet = XLSX.utils.aoa_to_sheet(allOrdersData);
+        
+        // 设置列宽
+        const colWidths = [
+            { wch: 40 },  // 商品名称
+            { wch: 20 },  // 规格
+            { wch: 10 },  // 数量
+            { wch: 15 },  // 金额
+            { wch: 25 }   // 订单时间
+        ];
+        
+        allOrdersSheet['!cols'] = colWidths;
+        
+        // 添加到工作簿
+        XLSX.utils.book_append_sheet(workbook, allOrdersSheet, '所有订单');
+        
+        // 为每个类别创建单独的工作表
+        Object.entries(ordersByCategory).forEach(([category, orders]) => {
+            if (orders.length > 0) {
+                // 准备类别数据
+                const categoryData = [
+                    headers,
+                    ...orders.map(order => {
+                        const saleInfo = extractSaleInfo(order.sale);
+                        
+                        // 处理订单时间
+                        let timeDisplay = '';
+                        if (order.date && order.time) {
+                            timeDisplay = `${order.date} ${order.time}`;
+                        } else {
+                            timeDisplay = saleInfo.time || '-';
+                        }
+                        
+                        return [
+                            saleInfo.product || '-',
+                            saleInfo.spec || '-',
+                            saleInfo.quantity || '-',
+                            parseFloat(saleInfo.price) || 0,
+                            timeDisplay
+                        ];
+                    })
+                ];
+                
+                // 添加类别合计
+                const categoryTotal = orders.reduce((sum, order) => {
+                    const saleInfo = extractSaleInfo(order.sale);
+                    return sum + (parseFloat(saleInfo.price) || 0);
+                }, 0);
+                
+                categoryData.push(['合计', '', '', categoryTotal, '']);
+                
+                // 创建类别工作表
+                const categorySheet = XLSX.utils.aoa_to_sheet(categoryData);
+                categorySheet['!cols'] = colWidths;
+                
+                // 添加到工作簿
+                XLSX.utils.book_append_sheet(workbook, categorySheet, `${category}类`);
+            }
+        });
+        
+        // 生成文件名
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('zh-CN').replace(/\//g, '-');
+        const fileName = `${anchorName}-订单明细-${dateStr}.xlsx`;
+        
+        // 写入文件并下载
+        XLSX.writeFile(workbook, fileName);
+        
+        console.log('Excel文件导出成功:', fileName);
+        showNotice('success', `订单数据已导出为 ${fileName}`);
+    } catch (error) {
+        console.error('导出Excel时出错:', error);
+        showNotice('danger', '导出Excel失败，请检查控制台获取详细错误信息');
+    }
+}
+
+// 创建和管理模态框的通用函数
+function createAndManageModal(modalId, modalContent, options = {}) {
+    console.log(`开始创建模态框: ${modalId}，清理旧的实例和背景`);
+    
+    // 先移除所有模态框背景和清理body样式
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+        if (backdrop.parentNode) {
+            backdrop.parentNode.removeChild(backdrop);
+        }
+    });
+    
+    // 如果body有modal-open类但没有可见模态框，则移除该类
+    if (document.body.classList.contains('modal-open') && !document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('padding-right');
+        document.body.style.removeProperty('overflow');
+    }
+    
+    // 移除旧的模态框（如果存在）
+    const oldModal = document.getElementById(modalId);
+    if (oldModal) {
+        console.log(`移除已存在的模态框: ${modalId}`);
+        try {
+            // 尝试使用Bootstrap API关闭模态框
+            const oldModalInstance = bootstrap.Modal.getInstance(oldModal);
+            if (oldModalInstance) {
+                oldModalInstance.dispose();
+            }
+        } catch (e) {
+            console.warn(`无法通过Bootstrap API销毁模态框: ${e.message}`);
+        }
+        
+        // 直接从DOM中移除
+        if (oldModal.parentNode) {
+            oldModal.parentNode.removeChild(oldModal);
+        }
+    }
+    
+    // 创建新的模态框容器
+    const tempContainer = document.createElement('div');
+    tempContainer.innerHTML = modalContent;
+    
+    // 获取模态框元素
+    const modalElement = tempContainer.firstElementChild;
+    
+    // 确保模态框没有tabindex=-1或aria-hidden=true属性
+    if (modalElement.hasAttribute('aria-hidden')) {
+        console.log(`移除模态框的aria-hidden属性: ${modalId}`);
+        modalElement.removeAttribute('aria-hidden');
+    }
+    
+    // 将tabindex设为0，确保可以接收焦点
+    if (modalElement.getAttribute('tabindex') === '-1') {
+        modalElement.setAttribute('tabindex', '0');
+    }
+    
+    // 递归清理所有子元素的aria-hidden属性
+    function cleanAriaHiddenRecursive(element) {
+        if (element.hasAttribute('aria-hidden')) {
+            element.removeAttribute('aria-hidden');
+        }
+        
+        Array.from(element.children).forEach(cleanAriaHiddenRecursive);
+    }
+    
+    // 应用递归清理
+    cleanAriaHiddenRecursive(modalElement);
+    
+    // 添加到DOM
+    document.body.appendChild(modalElement);
+    console.log(`模态框已添加到DOM: ${modalId}`);
+    
+    // 确保Bootstrap正确初始化
+    let modalInstance;
+    try {
+        // 创建Bootstrap模态框实例
+        modalInstance = new bootstrap.Modal(modalElement, {
+            backdrop: options.backdrop !== undefined ? options.backdrop : true,
+            keyboard: options.keyboard !== undefined ? options.keyboard : true,
+            focus: options.focus !== undefined ? options.focus : true
+        });
+        console.log(`Bootstrap模态框实例已创建: ${modalId}`);
+    } catch (e) {
+        console.error(`创建Bootstrap模态框实例失败: ${e.message}`);
+        alert('创建模态框失败，请重试');
+        
+        // 清理失败的模态框
+        if (modalElement.parentNode) {
+            modalElement.parentNode.removeChild(modalElement);
+        }
+        return null;
+    }
+    
+    // 模态框显示前事件
+    modalElement.addEventListener('show.bs.modal', function(event) {
+        console.log(`模态框 ${modalId} 将要显示`);
+        
+        // 再次检查并移除aria-hidden属性
+        if (modalElement.hasAttribute('aria-hidden')) {
+            console.log(`即将显示前再次移除aria-hidden属性`);
+            modalElement.removeAttribute('aria-hidden');
+        }
+        
+        // 自定义显示前回调
+        if (typeof options.onBeforeShow === 'function') {
+            options.onBeforeShow(modalElement, modalInstance);
+        }
+    });
+    
+    // 模态框显示后事件
+    modalElement.addEventListener('shown.bs.modal', function(event) {
+        console.log(`模态框 ${modalId} 已显示`);
+        
+        // 添加MutationObserver监控aria-hidden属性的变化
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+                    console.log(`检测到aria-hidden属性被添加，立即移除`);
+                    modalElement.removeAttribute('aria-hidden');
+                }
+            });
+        });
+        
+        // 开始监视aria-hidden属性
+        observer.observe(modalElement, { attributes: true });
+        
+        // 存储observer引用以便稍后清理
+        modalElement._ariaObserver = observer;
+        
+        // 自定义显示后回调
+        if (typeof options.onAfterShow === 'function') {
+            options.onAfterShow(modalElement, modalInstance);
+        }
+    });
+    
+    // 模态框隐藏前事件
+    modalElement.addEventListener('hide.bs.modal', function(event) {
+        console.log(`模态框 ${modalId} 将要隐藏`);
+        
+        // 自定义隐藏前回调
+        if (typeof options.onBeforeHide === 'function') {
+            options.onBeforeHide(modalElement, modalInstance);
+        }
+    });
+    
+    // 模态框隐藏后事件
+    modalElement.addEventListener('hidden.bs.modal', function(event) {
+        console.log(`模态框 ${modalId} 已隐藏，准备清理资源`);
+        
+        // 停止观察aria-hidden属性
+        if (modalElement._ariaObserver) {
+            modalElement._ariaObserver.disconnect();
+            delete modalElement._ariaObserver;
+        }
+        
+        // 销毁可能存在的图表
+        if (options.chartInstance && options.chartInstance instanceof Chart) {
+            try {
+                options.chartInstance.destroy();
+                console.log(`销毁图表实例成功`);
+            } catch (e) {
+                console.warn(`销毁图表失败: ${e.message}`);
+            }
+        }
+        
+        // 延迟删除模态框元素，确保所有动画和清理操作已完成
+        setTimeout(() => {
+            try {
+                // 销毁Bootstrap模态框实例
+                if (modalInstance) {
+                    modalInstance.dispose();
+                    console.log(`Bootstrap模态框实例已销毁: ${modalId}`);
+                }
+            } catch (e) {
+                console.warn(`销毁Bootstrap模态框实例失败: ${e.message}`);
+            }
+            
+            // 如果元素仍然存在于DOM中，则移除它
+            if (modalElement.parentNode) {
+                console.log(`从DOM中完全移除模态框 ${modalId}`);
+                modalElement.parentNode.removeChild(modalElement);
+            }
+            
+            // 移除可能残留的模态框背景
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                console.log('移除模态框背景');
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+            });
+            
+            // 如果没有其他显示的模态框，移除body上的相关类和样式
+            if (!document.querySelector('.modal.show')) {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('padding-right');
+                document.body.style.removeProperty('overflow');
+            }
+            
+            // 自定义隐藏后回调
+            if (typeof options.onAfterHide === 'function') {
+                options.onAfterHide();
+            }
+        }, 300);
+    });
+    
+    // 创建destroy方法用于外部销毁模态框
+    const modalController = {
+        modal: modalInstance,
+        element: modalElement,
+        
+        // 提供销毁方法
+        destroy: function() {
+            console.log(`手动销毁模态框: ${modalId}`);
+            try {
+                if (modalElement._ariaObserver) {
+                    modalElement._ariaObserver.disconnect();
+                    delete modalElement._ariaObserver;
+                }
+                
+                if (modalInstance) {
+                    modalInstance.hide();
+                } else {
+                    // 如果没有实例，直接移除元素
+                    if (modalElement.parentNode) {
+                        modalElement.parentNode.removeChild(modalElement);
+                    }
+                    
+                    // 清理背景和body样式
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                    });
+                    
+                    if (!document.querySelector('.modal.show')) {
+                        document.body.classList.remove('modal-open');
+                        document.body.style.removeProperty('padding-right');
+                        document.body.style.removeProperty('overflow');
+                    }
+                }
+            } catch (e) {
+                console.warn(`销毁模态框失败: ${e.message}`);
+                // 即使出错也强制清理
+                if (modalElement.parentNode) {
+                    modalElement.parentNode.removeChild(modalElement);
+                }
+                
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                    if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                });
+                
+                if (!document.querySelector('.modal.show')) {
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('padding-right');
+                    document.body.style.removeProperty('overflow');
+                }
+            }
+        }
+    };
+    
+    // 显示模态框
+    console.log(`显示模态框: ${modalId}`);
+    try {
+        modalInstance.show();
+    } catch (e) {
+        console.error(`显示模态框失败: ${e.message}`);
+        modalController.destroy();
+        return null;
+    }
+    
+    // 返回模态框控制器
+    return modalController;
 }
