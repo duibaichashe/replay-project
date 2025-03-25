@@ -117,6 +117,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // 修复所有现有模态框
         fixModalAriaAttributes();
     });
+    
+    // 加载AI分析脚本
+    loadScript('js/Ai_analysis.js');
 });
 
 // 初始化拖放区域和文件选择按钮
@@ -1661,7 +1664,12 @@ function displayResultsPage(results, page) {
         }
         
         // 从销售数据中提取信息
-        const { product, spec, quantity, price, time } = extractSaleInfo(result.sale);
+        const saleInfo = extractSaleInfo(result.sale);
+        const product = saleInfo.product || '-';
+        const price = saleInfo.price || '-';
+        const spec = saleInfo.spec || '-';
+        const quantity = saleInfo.quantity || '-';
+        const time = saleInfo.time || '-';
         
         // 创建日期时间显示
         let timeDisplay = `${result.date} ${result.time}`;
@@ -1890,7 +1898,7 @@ function updatePaginationButtons(currentPage, totalPages) {
     }
 }
 
-// 从销售数据中提取必要信息
+// 提取销售信息
 function extractSaleInfo(saleRow) {
     // 针对不同的数据结构进行适配
     if (!saleRow) return { product: '-', spec: '-', quantity: '-', price: '-', time: '-' };
@@ -1900,10 +1908,18 @@ function extractSaleInfo(saleRow) {
     let quantity = '-';
     let price = '-';
     let time = '-';
+    let brand = '';
     
     try {
         // 如果是对象（已解析的JSON）
         if (typeof saleRow === 'object' && !Array.isArray(saleRow)) {
+            // 这可能是格式化后的数据对象
+            if (saleRow.product !== undefined) {
+                // 如果已经有product属性，可能是已经处理过的对象
+                return saleRow;
+            }
+            
+            // 否则从原始数据中提取
             product = saleRow['选购商品'] || saleRow['商品名称'] || saleRow['商品'] || '-';
             spec = saleRow['商品规格'] || saleRow['规格'] || '-';
             quantity = saleRow['商品数量'] || saleRow['数量'] || '-';
@@ -1921,13 +1937,52 @@ function extractSaleInfo(saleRow) {
             time = saleRow[4] || '-';
         }
         else if (typeof saleRow === 'string') {
-            product = saleRow;
+            // 对于字符串类型，尝试解析为JSON
+            try {
+                const jsonObj = JSON.parse(saleRow);
+                return extractSaleInfo(jsonObj); // 递归处理解析后的对象
+            } catch (e) {
+                // 如果不是JSON字符串，则按普通字符串处理
+                
+                // 字符串处理：尝试提取产品名称和价格
+                const productMatch = saleRow.match(/([^0-9]+)/);
+                const priceMatch = saleRow.match(/(\d+(\.\d+)?)/);
+                
+                product = productMatch ? productMatch[0].trim() : '-';
+                price = priceMatch ? priceMatch[0] : '-';
+                
+                // 从商品名称中提取规格和数量信息
+                // 例如："美素佳儿源悦3段幼儿配方奶粉800g 荷兰原装进口"
+                
+                // 提取规格 - 常见的格式有：N段、N阶段
+                const specMatch = product.match(/(\d+段|\d+阶段)/);
+                if (specMatch) {
+                    spec = specMatch[0];
+                }
+                
+                // 提取数量 - 常见的格式有：NNNg、NNNml、NNN克、NNN毫升
+                const quantityMatch = saleRow.match(/(\d+[g克]|\d+[ml毫升])/);
+                if (quantityMatch) {
+                    quantity = quantityMatch[0];
+                }
+            }
+        }
+        
+        // 确定产品品牌
+        if (product.includes('源悦')) {
+            brand = '源悦';
+        } else if (product.includes('莼悦')) {
+            brand = '莼悦';
+        } else if (product.includes('旺玥')) {
+            brand = '旺玥';
+        } else if (product.includes('皇家')) {
+            brand = '皇家';
         }
     } catch (error) {
         console.error('提取销售信息错误:', error);
     }
     
-    return { product, spec, quantity, price, time };
+    return { product, spec, quantity, price, time, brand };
 }
 
 // 清除数据
@@ -5378,4 +5433,21 @@ function analyzeSalesTrends(results) {
         console.error('分析销售趋势时出错:', error);
         return null;
     }
+}
+
+// 添加脚本加载函数（如果不存在）
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        // 检查脚本是否已加载
+        if (document.querySelector(`script[src="${src}"]`)) {
+            resolve();
+            return;
+        }
+        
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = (e) => reject(e);
+        document.head.appendChild(script);
+    });
 }
