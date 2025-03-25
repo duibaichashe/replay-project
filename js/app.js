@@ -2929,26 +2929,60 @@ function createAnchorCategoryCharts(anchorName) {
                     
                     console.log('订单商品名称:', productName);
                     
-                    // 分类规则 - 按用户指定的精确匹配条件
-                    // 1. 商品名中包含"源悦"的商品就是源悦类
-                    // 2. 商品名中包含"莼悦"的商品就是莼悦类
-                    // 3. 商品名中包含"旺玥"的商品就是旺玥类
-                    // 4. 商品名中包含"皇家"，且不包含"旺玥"和"莼悦"的商品就是皇家类
-                    if (productName.includes('源悦')) {
-                        ordersByCategory['源悦'].push(order);
-                    } else if (productName.includes('莼悦')) {
-                        ordersByCategory['莼悦'].push(order);
-                    } else if (productName.includes('旺玥')) {
+                    // 分类规则重新设计，确保所有订单都能分类成功
+                    if (productName.includes('旺玥') || productName.includes('旺悦')) {
+                        // 包含旺玥或旺悦的商品归类为旺玥类
                         ordersByCategory['旺玥'].push(order);
-                    } else if (productName.includes('皇家') && !productName.includes('旺玥') && !productName.includes('莼悦')) {
+                        console.log(`订单分类为旺玥类: ${productName}`);
+                    } 
+                    else if (productName.includes('莼悦') || productName.includes('纯悦')) {
+                        // 包含莼悦或纯悦的商品归类为莼悦类
+                        ordersByCategory['莼悦'].push(order);
+                        console.log(`订单分类为莼悦类: ${productName}`);
+                    } 
+                    else if (productName.includes('源悦') || productName.includes('原悦')) {
+                        // 包含源悦或原悦的商品归类为源悦类
+                        ordersByCategory['源悦'].push(order);
+                        console.log(`订单分类为源悦类: ${productName}`);
+                    } 
+                    else if (productName.includes('皇家') || 
+                             productName.includes('美素佳儿') || 
+                             productName.includes('皇家美素') || 
+                             productName.includes('荷兰皇家') || 
+                             productName.toLowerCase().includes('friso')) {
+                        // 皇家类产品
                         ordersByCategory['皇家'].push(order);
-                    } else {
-                        // 对于美素佳儿，归类为皇家类
-                        if (productName.includes('美素佳儿')) {
-                            ordersByCategory['皇家'].push(order);
-                        } else {
-                            // 默认保留在源悦类中，因图片显示默认是源悦类产品
+                        console.log(`订单分类为皇家类: ${productName}`);
+                    } 
+                    else if (productName.includes('美素') || 
+                             productName.includes('Friso') || 
+                             productName.includes('FRISO')) {
+                        // 美素佳儿相关产品
+                        ordersByCategory['皇家'].push(order);
+                        console.log(`订单分类为皇家类(美素): ${productName}`);
+                    } 
+                    else if (productName.includes('粉') && productName.includes('婴') || 
+                             productName.includes('奶') && productName.includes('婴')) {
+                        // 明确的婴儿奶粉默认归为源悦类
+                        ordersByCategory['源悦'].push(order);
+                        console.log(`订单默认分类为源悦类(婴儿奶粉): ${productName}`);
+                    }
+                    else if (productName.includes('小罐馋') || productName.includes('小理想')) {
+                        // 特定品牌归为旺玥类
+                        ordersByCategory['旺玥'].push(order);
+                        console.log(`订单分类为旺玥类(特定品牌): ${productName}`);
+                    }
+                    else {
+                        // 检查商品名称中是否包含数字和"段"，表示奶粉段数
+                        const hasStage = /[1-4]段/.test(productName);
+                        if (hasStage) {
+                            // 含有段数的奶粉产品归类为源悦类
                             ordersByCategory['源悦'].push(order);
+                            console.log(`订单分类为源悦类(带段数奶粉): ${productName}`);
+                        } else {
+                            // 最后的默认分类，归为旺玥类（非奶粉类产品）
+                            ordersByCategory['旺玥'].push(order);
+                            console.log(`订单默认分类为旺玥类(其他): ${productName}`);
                         }
                     }
                 });
@@ -3027,8 +3061,8 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
         } catch (e) {
             console.warn('清理旧模态框错误:', e);
         }
-    
-        // 创建模态框HTML
+        
+        // 准备一个简单的DIV容器来依次显示各类别的订单
         let modalHTML = `
             <div class="modal fade" id="anchor-details-modal" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
                 <div class="modal-dialog modal-xl">
@@ -3041,8 +3075,10 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                             <div class="alert alert-info mb-3">
                                 共找到 ${Object.values(ordersByCategory).flat().length} 条订单记录
                             </div>
-                            <ul class="nav nav-tabs" id="detailTabs" role="tablist">`;
-    
+                            
+                            <!-- 标签页导航栏 -->
+                            <ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">`;
+        
         // 创建标签页
         let firstCategory = true;
         CATEGORY_ORDER.forEach(category => {
@@ -3052,22 +3088,23 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                     <li class="nav-item" role="presentation">
                         <button class="nav-link ${firstCategory ? 'active' : ''}" 
                             id="${categoryId}-tab" 
+                            data-category="${category}"
                             data-bs-toggle="tab" 
-                            data-bs-target="#${categoryId}-content" 
-                            type="button" role="tab" 
-                            aria-controls="${categoryId}-content" 
-                            aria-selected="${firstCategory ? 'true' : 'false'}">
+                            data-bs-target="#${categoryId}-panel" 
+                            type="button">
                             ${category}类 (${ordersByCategory[category].length})
                         </button>
                     </li>`;
                 firstCategory = false;
             }
         });
-    
+        
         modalHTML += `
                             </ul>
-                            <div class="tab-content pt-3" id="detailTabsContent">`;
-    
+                            
+                            <!-- 标签内容区域 -->
+                            <div class="tab-content" id="orderTabContent">`;
+        
         // 创建每个类别的内容面板
         firstCategory = true;
         CATEGORY_ORDER.forEach(category => {
@@ -3076,13 +3113,12 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                 const currentPage = categoryPageInfo[category].currentPage;
                 const totalPages = categoryPageInfo[category].totalPages;
                 
+                // 为每个类别创建一个显示面板 - 确保ID和data-bs-target匹配
                 modalHTML += `
-                    <div class="tab-pane fade ${firstCategory ? 'show active' : ''}" 
-                        id="${categoryId}-content" 
-                        role="tabpanel" 
-                        aria-labelledby="${categoryId}-tab">
+                    <div class="tab-pane ${firstCategory ? 'show active' : ''}" id="${categoryId}-panel">
+                        <h5 class="mb-3">${category}类订单明细（共${ordersByCategory[category].length}条）</h5>
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover">
+                            <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>商品名称</th>
@@ -3094,13 +3130,13 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                                 </thead>
                                 <tbody id="${categoryId}-tbody">`;
                 
-                // 计算当前页的订单范围
+                // 获取当前页的订单
                 const startIndex = (currentPage - 1) * ordersPerPage;
                 const endIndex = Math.min(startIndex + ordersPerPage, ordersByCategory[category].length);
-                const currentPageOrders = ordersByCategory[category].slice(startIndex, endIndex);
+                const pageOrders = ordersByCategory[category].slice(startIndex, endIndex);
                 
-                // 添加当前页的订单
-                currentPageOrders.forEach(order => {
+                // 添加订单行
+                pageOrders.forEach(order => {
                     const saleInfo = extractSaleInfo(order.sale);
                     
                     // 处理订单时间显示
@@ -3121,36 +3157,34 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                         </tr>`;
                 });
                 
-                // 计算该类别的总金额
+                // 计算类别总金额
                 const categoryTotal = ordersByCategory[category].reduce((total, order) => {
                     const saleInfo = extractSaleInfo(order.sale);
                     return total + (parseFloat(saleInfo.price) || 0);
                 }, 0);
                 
-                // 添加类别合计和分页控制
+                // 添加分页和总计
                 modalHTML += `
                                 </tbody>
                             </table>
-                            <div class="d-flex justify-content-between align-items-center mt-2">
-                                <div class="pagination-info">
-                                    <small>第 ${currentPage} 页，共 ${totalPages} 页</small>
+                            <div class="d-flex justify-content-between align-items-center mt-3">
+                                <div>
+                                    <span class="badge bg-primary">第 ${currentPage} 页，共 ${totalPages} 页</span>
                                 </div>
-                                <div class="fw-bold text-end">
-                                    <span class="badge bg-info text-dark">类别合计: ¥${categoryTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                <div class="text-end">
+                                    <span class="badge bg-success">类别合计: ¥${categoryTotal.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                 </div>
                             </div>
                             
-                            <!-- 分页控制 -->
-                            <div class="d-flex justify-content-center mt-2">
-                                <div class="btn-group" role="group">
-                                    <button type="button" class="btn btn-sm btn-outline-primary prev-page-btn" 
-                                        data-category="${category}" 
-                                        ${currentPage <= 1 ? 'disabled' : ''}>
+                            <!-- 分页按钮 -->
+                            <div class="d-flex justify-content-center mt-3">
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm prev-page" 
+                                            data-category="${category}" ${currentPage <= 1 ? 'disabled' : ''}>
                                         <i class="bi bi-chevron-left"></i> 上一页
                                     </button>
-                                    <button type="button" class="btn btn-sm btn-outline-primary next-page-btn" 
-                                        data-category="${category}" 
-                                        ${currentPage >= totalPages ? 'disabled' : ''}>
+                                    <button type="button" class="btn btn-outline-primary btn-sm next-page" 
+                                            data-category="${category}" ${currentPage >= totalPages ? 'disabled' : ''}>
                                         下一页 <i class="bi bi-chevron-right"></i>
                                     </button>
                                 </div>
@@ -3161,7 +3195,8 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                 firstCategory = false;
             }
         });
-    
+        
+        // 完成模态框HTML
         modalHTML += `
                             </div>
                         </div>
@@ -3171,153 +3206,112 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                     </div>
                 </div>
             </div>`;
-    
-        // 添加模态框到文档
+        
+        // 添加模态框到DOM
         const modalContainer = document.createElement('div');
         modalContainer.innerHTML = modalHTML;
         document.body.appendChild(modalContainer.firstElementChild);
-    
-        // 获取模态框实例
-        const modalElement = document.getElementById('anchor-details-modal');
-    
-        // 显示模态框
-        try {
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
-            
-            // 等待模态框完全显示后再设置标签点击事件
-            modalElement.addEventListener('shown.bs.modal', function() {
-                console.log('模态框已完全显示，设置标签点击事件');
-                
-                // 重新获取标签元素
-                const tabs = modalElement.querySelectorAll('[data-bs-toggle="tab"]');
-                console.log(`找到 ${tabs.length} 个标签页按钮`);
-                
-                // 移除Bootstrap的内置事件处理程序
-                tabs.forEach(tab => {
-                    tab.removeAttribute('data-bs-toggle');
-                });
-                
-                // 添加自定义点击事件
-                tabs.forEach(tab => {
-                    tab.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        
-                        const targetId = this.getAttribute('data-bs-target');
-                        console.log(`点击了标签: ${this.textContent}，目标面板: ${targetId}`);
-                        
-                        // 移除所有标签页的active类
-                        tabs.forEach(t => {
-                            t.classList.remove('active');
-                            t.setAttribute('aria-selected', 'false');
-                        });
-                        
-                        // 移除所有内容面板的active类
-                        const allPanes = modalElement.querySelectorAll('.tab-pane');
-                        allPanes.forEach(pane => {
-                            pane.classList.remove('show', 'active');
-                        });
-                        
-                        // 激活当前标签页
-                        this.classList.add('active');
-                        this.setAttribute('aria-selected', 'true');
-                        
-                        // 激活对应的内容面板
-                        const targetPane = modalElement.querySelector(targetId);
-                        if (targetPane) {
-                            targetPane.classList.add('show', 'active');
-                            console.log(`已激活面板: ${targetId}`);
-                        } else {
-                            console.error(`找不到目标面板: ${targetId}`);
-                        }
-                    });
-                });
-            });
-            
-            // 为分页按钮添加事件处理
-            modalElement.querySelectorAll('.prev-page-btn, .next-page-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const category = this.getAttribute('data-category');
-                    const isNext = this.classList.contains('next-page-btn');
-                    
-                    // 更新页码
-                    if (isNext) {
-                        categoryPageInfo[category].currentPage++;
-                    } else {
-                        categoryPageInfo[category].currentPage--;
-                    }
-                    
-                    const currentPage = categoryPageInfo[category].currentPage;
-                    const totalPages = categoryPageInfo[category].totalPages;
-                    
-                    // 计算当前页的订单范围
-                    const startIndex = (currentPage - 1) * ordersPerPage;
-                    const endIndex = Math.min(startIndex + ordersPerPage, ordersByCategory[category].length);
-                    const currentPageOrders = ordersByCategory[category].slice(startIndex, endIndex);
-                    
-                    // 更新表格内容
-                    const categoryId = category.replace(/[^a-zA-Z0-9]/g, '');
-                    const tbody = document.getElementById(`${categoryId}-tbody`);
-                    
-                    if (tbody) {
-                        // 清空表格
-                        tbody.innerHTML = '';
-                        
-                        // 添加当前页的订单
-                        currentPageOrders.forEach(order => {
-                            const saleInfo = extractSaleInfo(order.sale);
-                            
-                            // 处理订单时间显示
-                            let timeDisplay = '';
-                            if (order.date && order.time) {
-                                timeDisplay = `${order.date} ${order.time}`;
-                            } else {
-                                timeDisplay = saleInfo.time || '-';
-                            }
-                            
-                            const tr = document.createElement('tr');
-                            tr.innerHTML = `
-                                <td>${saleInfo.product || '-'}</td>
-                                <td>${saleInfo.spec || '-'}</td>
-                                <td class="text-center">${saleInfo.quantity || '-'}</td>
-                                <td class="text-end">¥${(parseFloat(saleInfo.price) || 0).toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-                                <td>${timeDisplay}</td>
-                            `;
-                            tbody.appendChild(tr);
-                        });
-                        
-                        // 更新分页信息
-                        const paginationInfo = modalElement.querySelector(`#${categoryId}-content .pagination-info small`);
-                        if (paginationInfo) {
-                            paginationInfo.textContent = `第 ${currentPage} 页，共 ${totalPages} 页`;
-                        }
-                        
-                        // 更新上一页/下一页按钮状态
-                        const prevBtn = modalElement.querySelector(`#${categoryId}-content .prev-page-btn`);
-                        const nextBtn = modalElement.querySelector(`#${categoryId}-content .next-page-btn`);
-                        
-                        if (prevBtn) {
-                            prevBtn.disabled = currentPage <= 1;
-                        }
-                        
-                        if (nextBtn) {
-                            nextBtn.disabled = currentPage >= totalPages;
-                        }
-                    }
-                });
-            });
-        } catch (error) {
-            console.error('显示模态框错误:', error);
-        }
         
-        // 添加事件处理程序，关闭后删除模态框
-        modalElement.addEventListener('hidden.bs.modal', function() {
+        // 显示模态框
+        const modalEl = document.getElementById('anchor-details-modal');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        
+        // 添加分页按钮事件处理
+        modalEl.querySelectorAll('.prev-page, .next-page').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const category = this.getAttribute('data-category');
+                const isPrev = this.classList.contains('prev-page');
+                
+                // 更新当前页码
+                if (isPrev) {
+                    categoryPageInfo[category].currentPage--;
+                } else {
+                    categoryPageInfo[category].currentPage++;
+                }
+                
+                // 重新创建模态框以显示新页面的订单
+                modal.hide();
+                modalEl.addEventListener('hidden.bs.modal', function() {
+                    createOrderDetailModal(anchorName, ordersByCategory);
+                }, { once: true });
+            });
+        });
+        
+        // 添加关闭事件处理
+        modalEl.addEventListener('hidden.bs.modal', function() {
             if (this.parentNode) {
                 this.parentNode.removeChild(this);
             }
         });
+        
+        // 激活Bootstrap的tab功能
+        modalEl.addEventListener('shown.bs.modal', function() {
+            console.log('模态框显示完成，初始化标签页切换功能');
+            
+            // 诊断所有标签和面板
+            const tabs = modalEl.querySelectorAll('.nav-link');
+            const panes = modalEl.querySelectorAll('.tab-pane');
+            
+            console.log('所有标签按钮:');
+            tabs.forEach(tab => {
+                console.log(`- 标签ID: ${tab.id}, 目标: ${tab.getAttribute('data-bs-target')}, 内容: ${tab.textContent.trim()}`);
+            });
+            
+            console.log('所有内容面板:');
+            panes.forEach(pane => {
+                console.log(`- 面板ID: ${pane.id}, 内容行数: ${pane.querySelectorAll('tbody tr').length}`);
+            });
+            
+            // 为每个标签添加点击事件
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    console.log(`点击标签: ${this.textContent.trim()}`);
+                    const targetId = this.getAttribute('data-bs-target');
+                    const category = this.getAttribute('data-category');
+                    
+                    // 将所有标签设为非激活状态
+                    tabs.forEach(t => {
+                        t.classList.remove('active');
+                        t.setAttribute('aria-selected', 'false');
+                    });
+                    
+                    // 激活当前标签
+                    this.classList.add('active');
+                    this.setAttribute('aria-selected', 'true');
+                    
+                    // 隐藏所有面板
+                    panes.forEach(pane => {
+                        pane.classList.remove('show', 'active');
+                    });
+                    
+                    // 显示目标面板
+                    const targetPane = document.querySelector(targetId);
+                    if (targetPane) {
+                        targetPane.classList.add('show', 'active');
+                        console.log(`显示面板: ${targetId}, 类别: ${category}`);
+                        
+                        // 打印面板内容信息
+                        const rows = targetPane.querySelectorAll('tbody tr');
+                        if (rows.length > 0) {
+                            const firstProduct = rows[0].querySelector('td:first-child').textContent;
+                            console.log(`面板显示第一个商品: ${firstProduct}, 共${rows.length}条订单`);
+                        }
+                    } else {
+                        console.error(`找不到面板: ${targetId}`);
+                    }
+                });
+            });
+            
+            // 默认点击第一个标签
+            if (tabs.length > 0) {
+                tabs[0].click();
+            }
+        });
+        
     } catch (error) {
         console.error('创建订单明细模态框时出错:', error);
+        alert('显示订单明细时出错，请重试');
     }
 }
 
