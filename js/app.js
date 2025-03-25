@@ -2121,13 +2121,59 @@ function displayProductCategoryAnalysis() {
         }
     }
     
+    // 当前排序类别，默认为总计
+    const sortCategory = window.currentSortCategory || '总计';
+    
     // 创建内容 - 使用更美观的卡片设计
     let html = `
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-primary text-white py-3">
+        <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
             <h5 class="mb-0 fw-bold">
                 <i class="bi bi-bar-chart-fill me-2"></i>各主播商品类别销售额分析
             </h5>
+            <div class="dropdown">
+                <button class="btn btn-outline-light dropdown-toggle shadow-sm" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-filter me-1"></i> 
+                    <span class="me-1">排序:</span>
+                    <span class="badge bg-white text-primary rounded-pill d-inline-flex align-items-center px-2 py-1">
+                        <span class="sort-color-dot rounded-circle me-1" style="
+                            background-color: ${sortCategory === '总计' ? '#36b9cc' : 
+                                           sortCategory === '源悦' ? '#4e73df' : 
+                                           sortCategory === '莼悦' ? '#1cc88a' : 
+                                           sortCategory === '旺玥' ? '#f6c23e' : 
+                                           sortCategory === '皇家' ? '#e74a3b' : '#36b9cc'};
+                            width: 8px; 
+                            height: 8px; 
+                            display: inline-block;
+                            vertical-align: middle;">
+                        </span>
+                        ${sortCategory === '总计' ? '总计' : sortCategory + '类'}
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="sortDropdown" style="min-width: 180px;">
+                    <li><h6 class="dropdown-header">选择排序类别</h6></li>
+                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '总计' ? 'active' : ''}" href="#" data-category="总计">
+                        <span class="sort-indicator rounded-circle me-2" style="background-color: #36b9cc; width: 12px; height: 12px;"></span>
+                        按总计排序
+                    </a></li>
+                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '源悦' ? 'active' : ''}" href="#" data-category="源悦">
+                        <span class="sort-indicator rounded-circle me-2" style="background-color: #4e73df; width: 12px; height: 12px;"></span>
+                        按源悦类排序
+                    </a></li>
+                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '莼悦' ? 'active' : ''}" href="#" data-category="莼悦">
+                        <span class="sort-indicator rounded-circle me-2" style="background-color: #1cc88a; width: 12px; height: 12px;"></span>
+                        按莼悦类排序
+                    </a></li>
+                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '旺玥' ? 'active' : ''}" href="#" data-category="旺玥">
+                        <span class="sort-indicator rounded-circle me-2" style="background-color: #f6c23e; width: 12px; height: 12px;"></span>
+                        按旺玥类排序
+                    </a></li>
+                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '皇家' ? 'active' : ''}" href="#" data-category="皇家">
+                        <span class="sort-indicator rounded-circle me-2" style="background-color: #e74a3b; width: 12px; height: 12px;"></span>
+                        按皇家类排序
+                    </a></li>
+                </ul>
+            </div>
         </div>
         <div class="card-body p-0">
     `;
@@ -2170,20 +2216,46 @@ function displayProductCategoryAnalysis() {
         // 将固定的总工作时长改为动态计算
         let totalWorkHours = 0;
         
-        // 为每个主播添加一行 - 改进样式
-        Object.entries(productCategoryAnalysis).forEach(([anchor, categories], index) => {
+        // 处理数据并按选定类别排序
+        let anchorsData = Object.entries(productCategoryAnalysis).map(([anchor, categories]) => {
             const total = categories['源悦'] + categories['莼悦'] + categories['旺玥'] + categories['皇家'];
             
             // 获取工作时长
             const workHours = calculateAnchorWorkHours(anchor);
+            let hours = 0;
             
-            // 累加到总工作时长
+            // 提取小时数
             if (workHours !== '-') {
-                const hours = parseInt(workHours.replace('h', ''));
-                if (!isNaN(hours)) {
-                    totalWorkHours += hours;
+                const parsedHours = parseInt(workHours.replace('h', ''));
+                if (!isNaN(parsedHours)) {
+                    hours = parsedHours;
                 }
             }
+            
+            return {
+                anchor,
+                categories,
+                total,
+                workHours,
+                hours
+            };
+        });
+        
+        // 根据选择的类别排序
+        anchorsData.sort((a, b) => {
+            if (sortCategory === '总计') {
+                return b.total - a.total;
+            } else {
+                return b.categories[sortCategory] - a.categories[sortCategory];
+            }
+        });
+        
+        // 为每个主播添加一行 - 改进样式
+        anchorsData.forEach((data, index) => {
+            const { anchor, categories, total, workHours, hours } = data;
+            
+            // 累加到总工作时长
+            totalWorkHours += hours;
             
             // 累加总销售额
             totalSourceSales += categories['源悦'];
@@ -2287,6 +2359,87 @@ function displayProductCategoryAnalysis() {
     
     // 更新容器内容
     categoryContainer.innerHTML = html;
+    
+    // 添加排序事件处理
+    document.querySelectorAll('.sort-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const category = this.getAttribute('data-category');
+            console.log(`选择按 ${category} 排序`);
+            
+            // 添加点击反馈效果
+            const dropdownBtn = document.getElementById('sortDropdown');
+            if (dropdownBtn) {
+                // 添加临时动画类
+                dropdownBtn.classList.add('btn-flash');
+                // 移除动画类
+                setTimeout(() => {
+                    dropdownBtn.classList.remove('btn-flash');
+                }, 300);
+            }
+            
+            // 保存当前排序类别
+            window.currentSortCategory = category;
+            
+            // 重新显示分析结果
+            displayProductCategoryAnalysis();
+        });
+    });
+    
+    // 添加CSS样式
+    if (!document.getElementById('sort-button-styles')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'sort-button-styles';
+        styleEl.textContent = `
+            .dropdown-item.active .sort-indicator {
+                box-shadow: 0 0 0 2px #fff, 0 0 0 4px currentColor;
+            }
+            
+            .btn-outline-light:hover {
+                background-color: rgba(255, 255, 255, 0.2);
+                border-color: #fff;
+            }
+            
+            .dropdown-item:hover .sort-indicator {
+                transform: scale(1.2);
+                transition: transform 0.2s ease;
+            }
+            
+            .sort-indicator {
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+            }
+            
+            .btn-flash {
+                animation: btn-flash-animation 0.3s ease;
+            }
+            
+            @keyframes btn-flash-animation {
+                0% { background-color: rgba(255, 255, 255, 0.1); }
+                50% { background-color: rgba(255, 255, 255, 0.3); }
+                100% { background-color: rgba(255, 255, 255, 0.1); }
+            }
+            
+            /* 响应式样式 */
+            @media (max-width: 768px) {
+                .card-header {
+                    flex-direction: column;
+                    align-items: start !important;
+                }
+                
+                .card-header .dropdown {
+                    margin-top: 10px;
+                    align-self: flex-end;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                #sortDropdown .me-1:first-child {
+                    display: none;
+                }
+            }
+        `;
+        document.head.appendChild(styleEl);
+    }
     
     // 如果有数据，创建图表
     if (Object.keys(productCategoryAnalysis).length > 0) {
