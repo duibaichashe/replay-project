@@ -553,6 +553,9 @@ function startAnalysis() {
             const scheduleMap = processScheduleData(scheduleData);
             console.log("主播排班数据处理完成:", scheduleMap);
             
+            // 保存排班表数据到window对象，用于工作时长计算
+            window.scheduleMap = scheduleMap;
+            
             // 规范化销售数据
             const normalizedSales = normalizeSalesData(salesData);
             console.log(`销售数据规范化完成，共 ${normalizedSales.length} 条记录`);
@@ -701,18 +704,20 @@ function processScheduleData(data) {
             }
         }
         
-        // 将主播添加到旺悦和源悦的排班中
-        scheduleMap[currentDate][timeSlot].push({
-            anchor: anchorName,
-            position: `旺悦${wangTier}`
-        });
-        
-        scheduleMap[currentDate][timeSlot].push({
-            anchor: anchorName,
-            position: `源悦${yuanTier}`
-        });
-        
-        console.log(`添加主播 "${anchorName}" 到 ${currentDate} ${timeSlot}，旺悦档位: ${wangTier}，源悦档位: ${yuanTier}`);
+        // 检查该主播是否已在该时间段存在，避免重复添加
+        const existingAnchor = scheduleMap[currentDate][timeSlot].find(a => a.anchor === anchorName);
+        if (!existingAnchor) {
+            // 仅添加一次主播，避免重复计算工作时长
+            scheduleMap[currentDate][timeSlot].push({
+                anchor: anchorName,
+                position: `旺悦${wangTier}`,
+                brands: ['旺悦', '源悦']
+            });
+            
+            console.log(`添加主播 "${anchorName}" 到 ${currentDate} ${timeSlot}，旺悦档位: ${wangTier}，源悦档位: ${yuanTier}`);
+        } else {
+            console.log(`主播 "${anchorName}" 已存在于 ${currentDate} ${timeSlot} 时段，跳过添加`);
+        }
     }
     
     // 调试：检查生成的排班表中每个日期的时间段数量
@@ -2107,6 +2112,7 @@ function displayProductCategoryAnalysis() {
                     <thead>
                         <tr style="background-color: #f8f9fa;">
                             <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #4e73df; min-width: 100px;">主播</th>
+                            <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #4e73df; color: #4e73df;">工作时长</th>
                             <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #4e73df; color: #4e73df;">源悦类</th>
                             <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #1cc88a; color: #1cc88a;">莼悦类</th>
                             <th class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-bottom: 2px solid #f6c23e; color: #f6c23e;">旺玥类</th>
@@ -2117,16 +2123,24 @@ function displayProductCategoryAnalysis() {
                     <tbody>
         `;
         
-        // 计算总销售额
+        // 计算总销售额和总工作时长
         let totalSourceSales = 0;
         let totalChunSales = 0; 
         let totalWangSales = 0;
         let totalRoyalSales = 0;
         let grandTotal = 0;
+        let totalWorkHours = 0;
         
         // 为每个主播添加一行 - 改进样式
         Object.entries(productCategoryAnalysis).forEach(([anchor, categories], index) => {
             const total = categories['源悦'] + categories['莼悦'] + categories['旺玥'] + categories['皇家'];
+            
+            // 获取工作时长
+            const workHours = calculateAnchorWorkHours(anchor);
+            const hourValue = parseInt(workHours);
+            if (!isNaN(hourValue)) {
+                totalWorkHours += hourValue;
+            }
             
             // 累加总销售额
             totalSourceSales += categories['源悦'];
@@ -2145,6 +2159,11 @@ function displayProductCategoryAnalysis() {
             html += `
                 <tr class="${rowClass} hover-effect">
                     <td class="py-3 px-4 text-center fw-bold text-primary">${anchor}</td>
+                    <td class="py-3 px-4 text-center" style="position: relative;">
+                        <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-3 py-2 w-100">
+                            ${workHours}
+                        </span>
+                    </td>
                     <td class="py-3 px-4 text-center" style="position: relative;">
                         <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary px-3 py-2 w-100">
                             ¥ ${formatNumber(categories['源悦'])}
@@ -2178,6 +2197,11 @@ function displayProductCategoryAnalysis() {
         html += `
             <tr style="background-color: #f8f9fa;">
                 <td class="py-3 px-4 text-center fw-bold" style="background-color: #f8f9fa; border-top: 2px solid #4e73df;">总计</td>
+                <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #4e73df; position: relative;">
+                    <span class="badge rounded-pill bg-info px-3 py-2 w-100 text-white">
+                        ${totalWorkHours}h
+                    </span>
+                </td>
                 <td class="py-3 px-4 text-center" style="background-color: #f8f9fa; border-top: 2px solid #4e73df; position: relative;">
                     <span class="badge rounded-pill bg-primary px-3 py-2 w-100 text-white">
                         ¥ ${totalSourceSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
@@ -3940,4 +3964,43 @@ function fixModalAriaAttributes() {
     });
     
     console.log('模态框无障碍属性初始化完成');
+}
+
+// 添加计算主播工作时长的函数
+function calculateAnchorWorkHours(anchorName) {
+    if (!window.scheduleMap) {
+        console.warn('未找到排班表数据');
+        return '-';
+    }
+    
+    console.log(`计算主播 ${anchorName} 的工作时长...`);
+    
+    let totalHours = 0;
+    let timeSlotCounted = new Set(); // 用于记录已计算过的日期和时间段组合
+    
+    // 遍历每一天的排班
+    Object.entries(window.scheduleMap).forEach(([date, daySchedule]) => {
+        // 遍历每个时间段
+        Object.entries(daySchedule).forEach(([timeSlot, anchors]) => {
+            // 检查该时间段是否有这个主播
+            const hasAnchor = anchors.some(a => 
+                a.anchor && a.anchor.trim() === anchorName.trim()
+            );
+            
+            if (hasAnchor) {
+                const timeSlotKey = `${date}-${timeSlot}`;
+                
+                // 确保每个时段只计算一次
+                if (!timeSlotCounted.has(timeSlotKey)) {
+                    totalHours += 1; // 每个时间段计为1小时
+                    timeSlotCounted.add(timeSlotKey);
+                    
+                    console.log(`主播 ${anchorName} 在 ${date} ${timeSlot} 时段工作，当前累计: ${totalHours}小时`);
+                }
+            }
+        });
+    });
+    
+    console.log(`主播 ${anchorName} 总工作时长: ${totalHours}小时`);
+    return totalHours > 0 ? `${totalHours}h` : '-';
 }
