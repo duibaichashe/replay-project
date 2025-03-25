@@ -1,9 +1,10 @@
 /**
  * AI分析功能模块
- * 用于分析主播数据并提供AI点评
+ * 
+ * 提供了AI辅助分析功能，包括设置配置、API调用和结果展示
  */
 
-// AI设置相关变量
+// 全局AI设置
 let aiSettings = {
     apiUrl: '',
     apiKey: '',
@@ -14,16 +15,42 @@ let aiSettings = {
 // AI分析结果
 let aiAnalysisResults = {};
 
-// 页面加载完成后初始化AI功能
+// 确保DOM加载完成后再初始化
 document.addEventListener('DOMContentLoaded', function() {
     console.log('初始化AI分析功能...');
-    initAIAnalysis();
+    initAIFeatures();
+    
+    // 确保模态框和Bootstrap组件正确初始化
+    initBootstrapComponents();
 });
 
 /**
- * 初始化AI分析功能
+ * 初始化Bootstrap组件
  */
-function initAIAnalysis() {
+function initBootstrapComponents() {
+    // 直接初始化AI设置模态框
+    const settingsModalElement = document.getElementById('ai-settings-modal');
+    if (settingsModalElement) {
+        // 为保存按钮添加事件监听器
+        const saveButton = document.getElementById('save-ai-settings');
+        if (saveButton) {
+            // 移除现有事件监听器以避免重复
+            saveButton.removeEventListener('click', saveAISettings);
+            saveButton.addEventListener('click', saveAISettings);
+        }
+        
+        // 监听模态框显示事件
+        settingsModalElement.addEventListener('shown.bs.modal', function() {
+            console.log('AI设置模态框已显示');
+        });
+    }
+}
+
+/**
+ * 初始化AI功能
+ */
+function initAIFeatures() {
+    // 注意：此功能需要在基础分析完成后才能使用
     // 加载AI设置
     loadAISettings();
     
@@ -45,24 +72,30 @@ function loadAISettings() {
         const savedSettings = localStorage.getItem('aiSettings');
         if (savedSettings) {
             aiSettings = JSON.parse(savedSettings);
-            console.log('已从本地存储加载AI设置');
-        }
-        
-        // 填充设置表单
-        document.getElementById('ai-api-url').value = aiSettings.apiUrl || '';
-        document.getElementById('ai-api-key').value = aiSettings.apiKey || '';
-        document.getElementById('ai-model').value = aiSettings.model || 'gpt-3.5-turbo';
-        document.getElementById('use-demo-mode').checked = aiSettings.useDemoMode !== false;
-        
-        // 处理自定义模型
-        if (aiSettings.model === 'custom' && aiSettings.customModel) {
-            document.getElementById('custom-model-container').classList.remove('d-none');
-            document.getElementById('custom-model').value = aiSettings.customModel;
-        }
-        
-        // 如果不是演示模式，显示API测试选项
-        if (!aiSettings.useDemoMode) {
-            document.getElementById('api-test-container').classList.remove('d-none');
+            
+            // 填充设置表单
+            document.getElementById('ai-api-url').value = aiSettings.apiUrl || '';
+            document.getElementById('ai-api-key').value = aiSettings.apiKey || '';
+            document.getElementById('ai-model').value = aiSettings.model || 'gpt-3.5-turbo';
+            document.getElementById('use-demo-mode').checked = aiSettings.useDemoMode !== false;
+            
+            // 处理自定义模型
+            if (aiSettings.model === 'custom' && aiSettings.customModel) {
+                document.getElementById('custom-model').value = aiSettings.customModel;
+                document.getElementById('custom-model-container').classList.remove('d-none');
+            }
+            
+            // 根据演示模式显示/隐藏API测试区域
+            const apiTestContainer = document.getElementById('api-test-container');
+            if (apiTestContainer) {
+                if (aiSettings.useDemoMode) {
+                    apiTestContainer.classList.add('d-none');
+                } else {
+                    apiTestContainer.classList.remove('d-none');
+                }
+            }
+            
+            console.log('已加载AI设置:', aiSettings);
         }
     } catch (error) {
         console.error('加载AI设置时出错:', error);
@@ -73,11 +106,8 @@ function loadAISettings() {
  * 绑定AI设置表单事件
  */
 function bindAISettingsEvents() {
-    // 保存设置按钮
-    const saveButton = document.getElementById('save-ai-settings');
-    if (saveButton) {
-        saveButton.addEventListener('click', saveAISettings);
-    }
+    // 注意：保存按钮的事件处理已经在initBootstrapComponents中设置，此处不再重复添加
+    // 防止事件监听器重复导致的堆栈溢出
     
     // 模型选择变更
     const modelSelect = document.getElementById('ai-model');
@@ -113,62 +143,6 @@ function bindAISettingsEvents() {
 }
 
 /**
- * 保存AI设置
- */
-function saveAISettings() {
-    try {
-        // 获取表单值
-        const apiUrl = document.getElementById('ai-api-url').value.trim();
-        const apiKey = document.getElementById('ai-api-key').value.trim();
-        const model = document.getElementById('ai-model').value;
-        const useDemoMode = document.getElementById('use-demo-mode').checked;
-        
-        // 构建设置对象
-        const settings = {
-            apiUrl,
-            apiKey,
-            model,
-            useDemoMode
-        };
-        
-        // 如果选择自定义模型，保存自定义模型名称
-        if (model === 'custom') {
-            settings.customModel = document.getElementById('custom-model').value.trim();
-        }
-        
-        // 验证设置
-        if (!useDemoMode) {
-            if (!apiUrl) {
-                alert('请输入API接口地址');
-                return;
-            }
-            if (!apiKey) {
-                alert('请输入API密钥');
-                return;
-            }
-        }
-        
-        // 保存设置
-        aiSettings = settings;
-        localStorage.setItem('aiSettings', JSON.stringify(settings));
-        
-        // 关闭模态框
-        const modal = bootstrap.Modal.getInstance(document.getElementById('ai-settings-modal'));
-        if (modal) {
-            modal.hide();
-        }
-        
-        // 显示成功提示
-        showNotice('success', 'AI设置已保存');
-        
-        console.log('AI设置已保存:', settings);
-    } catch (error) {
-        console.error('保存AI设置时出错:', error);
-        alert('保存设置时出错: ' + error.message);
-    }
-}
-
-/**
  * 测试API连接
  */
 async function testAPIConnection() {
@@ -178,11 +152,43 @@ async function testAPIConnection() {
     try {
         const apiUrl = document.getElementById('ai-api-url').value.trim();
         const apiKey = document.getElementById('ai-api-key').value.trim();
+        const modelSelect = document.getElementById('ai-model');
+        
+        // 调试输出
+        console.log('API URL:', apiUrl);
+        console.log('API Key:', apiKey ? '已设置' : '未设置');
         
         if (!apiUrl || !apiKey) {
             resultContainer.innerHTML = '<div class="alert alert-danger">请填写API URL和密钥</div>';
             return;
         }
+        
+        // 获取正确的模型名称
+        let modelName = modelSelect.value;
+        if (modelName === 'custom') {
+            // 使用自定义模型输入框的值
+            const customModelInput = document.getElementById('custom-model');
+            if (customModelInput && customModelInput.value.trim()) {
+                modelName = customModelInput.value.trim();
+            } else {
+                resultContainer.innerHTML = '<div class="alert alert-danger">请填写自定义模型名称</div>';
+                return;
+            }
+        }
+        
+        console.log('测试API连接，使用模型:', modelName);
+        
+        // 创建请求数据
+        const requestData = {
+            model: modelName,
+            messages: [
+                {role: "system", content: "你是人工智能助手。"},
+                {role: "user", content: "测试API连接，请回复'连接成功'。"}
+            ],
+            max_tokens: 20
+        };
+        
+        console.log('发送API请求数据:', JSON.stringify(requestData));
         
         // 简单的测试请求
         const response = await fetch(apiUrl, {
@@ -191,20 +197,25 @@ async function testAPIConnection() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({
-                model: document.getElementById('ai-model').value,
-                messages: [
-                    {role: "user", content: "Hello, this is a test message. Please respond with 'API connection successful'."}
-                ],
-                max_tokens: 20
-            })
+            body: JSON.stringify(requestData)
         });
         
+        console.log('API响应状态:', response.status);
+        
         if (response.ok) {
+            const jsonResponse = await response.json();
+            console.log('API响应数据:', jsonResponse);
             resultContainer.innerHTML = '<div class="alert alert-success">API连接成功！</div>';
         } else {
-            const errorData = await response.json();
-            resultContainer.innerHTML = `<div class="alert alert-danger">API连接失败: ${errorData.error?.message || response.statusText}</div>`;
+            let errorMessage = '';
+            try {
+                const errorData = await response.json();
+                console.error('API错误响应:', errorData);
+                errorMessage = errorData.error?.message || response.statusText;
+            } catch (e) {
+                errorMessage = `HTTP错误: ${response.status} ${response.statusText}`;
+            }
+            resultContainer.innerHTML = `<div class="alert alert-danger">API连接失败: ${errorMessage}</div>`;
         }
     } catch (error) {
         console.error('测试API连接时出错:', error);
@@ -226,6 +237,28 @@ function bindAIAnalysisEvents() {
     const exportButton = document.getElementById('export-ai-analysis-btn');
     if (exportButton) {
         exportButton.addEventListener('click', exportAIAnalysis);
+    }
+}
+
+/**
+ * 导出AI分析结果
+ */
+function exportAIAnalysis() {
+    try {
+        console.log('导出AI分析结果...');
+        
+        // 检查是否有分析结果
+        if (!aiAnalysisResults || Object.keys(aiAnalysisResults).length === 0) {
+            showNotice('warning', '没有可导出的分析结果');
+            return;
+        }
+        
+        // 调用导出报告函数
+        exportAIAnalysisReport(aiAnalysisResults);
+        
+    } catch (error) {
+        console.error('导出AI分析结果出错:', error);
+        showNotice('danger', '导出失败: ' + error.message);
     }
 }
 
@@ -1279,38 +1312,81 @@ function extractSaleInfo(saleRow) {
  * 工具函数：显示通知消息
  */
 function showNotice(type, message, duration = 3000) {
-    // 检查是否已有通知容器
-    let container = document.getElementById('notification-container');
+    console.log('显示通知:', type, message);
     
-    // 如果没有容器，创建一个
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'notification-container';
-        container.style.position = 'fixed';
-        container.style.top = '20px';
-        container.style.right = '20px';
-        container.style.zIndex = '9999';
-        document.body.appendChild(container);
+    // 设置标记防止递归调用
+    if (window._showingNotice) {
+        console.warn('防止递归调用showNotice');
+        return;
     }
     
-    // 创建通知元素
-    const notification = document.createElement('div');
-    notification.className = `alert alert-${type} alert-dismissible fade show`;
-    notification.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    `;
-    
-    // 添加到容器
-    container.appendChild(notification);
-    
-    // 设置自动关闭
-    setTimeout(() => {
-        notification.classList.remove('show');
+    try {
+        window._showingNotice = true;
+        
+        // 首先尝试使用app.js中的showNotice函数，但只在它不是当前函数的情况下
+        if (typeof window.showNotice === 'function' && window.showNotice !== showNotice) {
+            window.showNotice(type, message, duration);
+            return;
+        }
+        
+        // 检查是否已有通知容器
+        let container = document.getElementById('notification-container');
+        
+        // 如果没有容器，创建一个
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.style.position = 'fixed';
+            container.style.top = '20px';
+            container.style.right = '20px';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+        }
+        
+        // 创建通知元素
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type} alert-dismissible fade show`;
+        notification.role = 'alert';
+        notification.style.minWidth = '250px';
+        notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+        notification.style.marginBottom = '10px';
+        
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // 添加到容器
+        container.appendChild(notification);
+        
+        // 添加点击关闭事件
+        const closeButton = notification.querySelector('.btn-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', function() {
+                container.removeChild(notification);
+            });
+        }
+        
+        // 设置自动关闭
         setTimeout(() => {
-            container.removeChild(notification);
-        }, 150);
-    }, duration);
+            if (notification.parentNode === container) {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    if (notification.parentNode === container) {
+                        container.removeChild(notification);
+                    }
+                }, 150);
+            }
+        }, duration);
+        
+        // 如果是一个重要的消息，也在控制台打印
+        if (type === 'success' || type === 'danger') {
+            console.log(`[通知] ${message}`);
+        }
+    } finally {
+        // 确保清除标记
+        window._showingNotice = false;
+    }
 }
 
 /**
@@ -1358,5 +1434,125 @@ function hideLoading() {
     const loader = document.getElementById('global-loader');
     if (loader) {
         loader.style.display = 'none';
+    }
+}
+
+/**
+ * 关闭模态框的辅助函数
+ * @param {string|Element} modalId - 模态框的ID或DOM元素
+ */
+function closeModal(modalId) {
+    console.log('尝试关闭模态框:', modalId);
+    
+    // 获取模态框元素
+    const modalElement = typeof modalId === 'string' 
+        ? document.getElementById(modalId) 
+        : modalId;
+    
+    if (!modalElement) {
+        console.warn('找不到模态框元素:', modalId);
+        return;
+    }
+    
+    try {
+        // 尝试使用Bootstrap API
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            // 先尝试获取已存在的实例
+            let modalInstance = bootstrap.Modal.getInstance(modalElement);
+            
+            // 如果没有实例，创建一个
+            if (!modalInstance) {
+                modalInstance = new bootstrap.Modal(modalElement);
+            }
+            
+            // 隐藏模态框
+            modalInstance.hide();
+            console.log('使用Bootstrap API关闭模态框成功');
+            return;
+        }
+    } catch (err) {
+        console.error('使用Bootstrap API关闭模态框失败:', err);
+    }
+    
+    // 回退方法：手动处理DOM
+    try {
+        // 移除模态框的显示类和内联样式
+        modalElement.classList.remove('show');
+        modalElement.style.display = 'none';
+        modalElement.setAttribute('aria-hidden', 'true');
+        modalElement.removeAttribute('aria-modal');
+        
+        // 移除body上的类和样式
+        document.body.classList.remove('modal-open');
+        document.body.style.overflow = '';
+        document.body.style.paddingRight = '';
+        
+        // 移除模态框背景
+        const backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(backdrop => {
+            backdrop.classList.remove('show');
+            setTimeout(() => {
+                if (backdrop.parentNode) {
+                    backdrop.parentNode.removeChild(backdrop);
+                }
+            }, 150);
+        });
+        
+        console.log('使用DOM方法关闭模态框成功');
+    } catch (err) {
+        console.error('使用DOM方法关闭模态框失败:', err);
+    }
+}
+
+/**
+ * 保存AI设置
+ */
+function saveAISettings() {
+    try {
+        console.log('保存AI设置...');
+        // 获取表单值
+        const apiUrl = document.getElementById('ai-api-url').value.trim();
+        const apiKey = document.getElementById('ai-api-key').value.trim();
+        const model = document.getElementById('ai-model').value;
+        const useDemoMode = document.getElementById('use-demo-mode').checked;
+        
+        // 构建设置对象
+        const settings = {
+            apiUrl,
+            apiKey,
+            model,
+            useDemoMode
+        };
+        
+        // 如果选择自定义模型，保存自定义模型名称
+        if (model === 'custom') {
+            settings.customModel = document.getElementById('custom-model').value.trim();
+        }
+        
+        // 验证设置
+        if (!useDemoMode) {
+            if (!apiUrl) {
+                alert('请输入API接口地址');
+                return;
+            }
+            if (!apiKey) {
+                alert('请输入API密钥');
+                return;
+            }
+        }
+        
+        // 保存设置
+        aiSettings = settings;
+        localStorage.setItem('aiSettings', JSON.stringify(settings));
+        
+        // 显示成功提示
+        showNotice('success', 'AI设置已保存');
+        console.log('AI设置已保存:', settings);
+        
+        // 关闭模态框
+        closeModal('ai-settings-modal');
+    } catch (error) {
+        console.error('保存AI设置时出错:', error);
+        alert('保存设置时出错: ' + error.message);
     }
 }
