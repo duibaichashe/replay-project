@@ -8,6 +8,11 @@ let availableScheduleDates = [];  // 可用的排班日期
 let analysisResults = [];  // 分析结果
 let productCategoryAnalysis = {}; // 存储商品分类分析结果
 
+// 全局变量，用于存储上传的文件数据
+let salesFileData = null;
+let scheduleFileData = null;
+let anchorMonthlyData = null;  // 新增：主播月度资料数据
+
 // DOM 元素
 const salesFileInput = document.getElementById('sales-file');
 const scheduleFileInput = document.getElementById('schedule-file');
@@ -121,7 +126,7 @@ function initializeDropZones() {
     // 拖放区域
     const dropZones = document.querySelectorAll('.upload-area');
     const fileInputs = document.querySelectorAll('input[type="file"]');
-    const selectButtons = document.querySelectorAll('label[for^="sales-file"], label[for^="schedule-file"]');
+    const selectButtons = document.querySelectorAll('label[for^="sales-file"], label[for^="schedule-file"], label[for^="anchor-monthly-file"]');
     
     let initialized = 0;
     
@@ -130,7 +135,18 @@ function initializeDropZones() {
         const fileType = dropZone.getAttribute('data-type');
         const fileInput = document.getElementById(`${fileType}-file`);
         const statusElement = document.getElementById(`${fileType}-status`);
-        const fileTypeLabel = fileType === 'sales' ? '销售数据' : '主播排班表';
+        
+        // 根据文件类型设置不同的标签
+        let fileTypeLabel;
+        if (fileType === 'sales') {
+            fileTypeLabel = '销售数据';
+        } else if (fileType === 'schedule') {
+            fileTypeLabel = '主播排班表';
+        } else if (fileType === 'anchor-monthly') {
+            fileTypeLabel = '主播月度资料';
+        } else {
+            fileTypeLabel = '文件';
+        }
         
         if (!dropZone || !fileInput) {
             console.error(`无法找到拖放区域或文件输入 (${fileType})`);
@@ -225,7 +241,18 @@ function handleFileSelection(dropZone, file) {
     }
     
     // 获取文件信息容器
-    const fileInfoId = fileType === 'sales' ? 'sales-file-info' : 'schedule-file-info';
+    let fileInfoId;
+    if (fileType === 'sales') {
+        fileInfoId = 'sales-file-info';
+    } else if (fileType === 'schedule') {
+        fileInfoId = 'schedule-file-info';
+    } else if (fileType === 'anchor-monthly') {
+        fileInfoId = 'anchor-monthly-file-info';
+    } else {
+        console.error(`未知的文件类型: ${fileType}`);
+        return;
+    }
+    
     const fileInfo = document.getElementById(fileInfoId);
     
     if (fileInfo) {
@@ -322,22 +349,34 @@ function processUploadedFile(file, type) {
         return;
     }
     
-    console.log(`开始处理${type === 'sales' ? '销售' : '排班表'}文件:`, file.name);
+    let fileTypeLabel;
+    if (type === 'sales') {
+        fileTypeLabel = '销售';
+    } else if (type === 'schedule') {
+        fileTypeLabel = '排班表';
+    } else if (type === 'anchor-monthly') {
+        fileTypeLabel = '主播月度资料';
+    } else {
+        fileTypeLabel = '未知';
+    }
     
-    const statusId = type === 'sales' ? 'sales-status' : 'schedule-status';
+    console.log(`开始处理${fileTypeLabel}文件:`, file.name);
+    
+    const statusId = `${type}-status`;
     document.getElementById(statusId).innerHTML = 
-        `<div class="alert alert-info">正在处理${type === 'sales' ? '销售' : '排班表'}文件...</div>`;
+        `<div class="alert alert-info">正在处理${fileTypeLabel}文件...</div>`;
     
     const reader = new FileReader();
     
     reader.onload = function(e) {
         try {
-            console.log(`正在解析${type === 'sales' ? '销售' : '排班表'}Excel文件...`);
+            console.log(`正在解析${fileTypeLabel}Excel文件...`);
             const data = parseExcel(e.target.result);
             
             if (data && data.length > 0) {
                 if (type === 'sales') {
                     salesData = parseSalesData(data);
+                    salesFileData = data; // 保存原始Excel数据
                     document.getElementById(statusId).innerHTML = 
                         `<div class="alert alert-success">
                             <div class="d-flex align-items-center">
@@ -349,9 +388,10 @@ function processUploadedFile(file, type) {
                             </div>
                         </div>`;
                     console.log('销售数据加载成功', salesData.length);
-                } else {
+                } else if (type === 'schedule') {
                     // 处理排班表数据
                     scheduleData = data;
+                    scheduleFileData = data; // 保存原始Excel数据
                     document.getElementById(statusId).innerHTML = 
                         `<div class="alert alert-success">
                             <div class="d-flex align-items-center">
@@ -363,24 +403,38 @@ function processUploadedFile(file, type) {
                             </div>
                         </div>`;
                     console.log('排班表数据加载成功', data.length);
+                } else if (type === 'anchor-monthly') {
+                    // 处理主播月度资料
+                    anchorMonthlyData = data;
+                    document.getElementById(statusId).innerHTML = 
+                        `<div class="alert alert-success">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check-circle-fill text-success me-2 fs-4"></i>
+                                <div>
+                                    <div class="fw-bold">已上传主播月度资料</div>
+                                    <div class="small">共${data.length}位主播</div>
+                                </div>
+                            </div>
+                        </div>`;
+                    console.log('主播月度资料加载成功', data.length);
                 }
                 
                 // 检查是否可以启用分析按钮
                 checkAnalyzeReady();
             } else {
                 document.getElementById(statusId).innerHTML = 
-                    `<div class="alert alert-danger">${type === 'sales' ? '销售' : '排班表'}数据无效或为空</div>`;
-                console.error(`${type === 'sales' ? '销售' : '排班表'}数据无效或为空`);
+                    `<div class="alert alert-danger">${fileTypeLabel}数据无效或为空</div>`;
+                console.error(`${fileTypeLabel}数据无效或为空`);
             }
         } catch (error) {
-            console.error(`解析${type === 'sales' ? '销售' : '排班表'}数据出错:`, error);
+            console.error(`解析${fileTypeLabel}数据出错:`, error);
             document.getElementById(statusId).innerHTML = 
                 `<div class="alert alert-danger">解析文件出错: ${error.message}</div>`;
         }
     };
     
     reader.onerror = function(error) {
-        console.error(`读取${type === 'sales' ? '销售' : '排班表'}文件失败:`, error);
+        console.error(`读取${fileTypeLabel}文件失败:`, error);
         document.getElementById(statusId).innerHTML = 
             `<div class="alert alert-danger">读取文件失败</div>`;
     };
@@ -391,10 +445,16 @@ function processUploadedFile(file, type) {
 
 // 检查是否可以启用分析按钮
 function checkAnalyzeReady() {
+    const analyzeBtn = document.getElementById('analyze-btn');
     if (scheduleData && salesData) {
-        console.log('两种数据都已成功加载，启用分析按钮');
+        console.log('必要数据已成功加载，启用分析按钮');
         console.log(`排班表数据: ${scheduleData.length}条记录`);
         console.log(`销售数据: ${salesData.length}条记录`);
+        if (anchorMonthlyData) {
+            console.log(`主播月度资料: ${anchorMonthlyData.length}位主播`);
+        } else {
+            console.log('未上传主播月度资料（可选）');
+        }
         
         analyzeBtn.disabled = false;
         
@@ -402,7 +462,7 @@ function checkAnalyzeReady() {
         const noticeHtml = `
             <div class="alert alert-success text-center">
                 <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>所有数据已就绪</strong>，可以点击"开始分析"按钮进行匹配分析
+                <strong>所有必要数据已就绪</strong>，可以点击"开始分析"按钮进行匹配分析
             </div>
         `;
         
@@ -411,6 +471,8 @@ function checkAnalyzeReady() {
         if (noticeArea) {
             noticeArea.innerHTML = noticeHtml;
         }
+    } else {
+        analyzeBtn.disabled = true;
     }
 }
 
@@ -585,6 +647,14 @@ function startAnalysis() {
     // 使用requestAnimationFrame代替setTimeout，性能更好
     requestAnimationFrame(() => {
         try {
+            // 检查必要数据是否存在
+            if (!salesData || !scheduleData) {
+                console.error('缺少必要的数据，无法进行分析');
+                hideLoading();
+                showNotice("danger", "请确保已上传销售数据和主播排班表");
+                return;
+            }
+            
             // 处理主播排班数据
             const scheduleMap = processScheduleData(scheduleData);
             console.log("主播排班数据处理完成:", scheduleMap);
@@ -600,6 +670,22 @@ function startAnalysis() {
             matchedResults = matchSalesWithSchedule(normalizedSales, scheduleMap);
             console.log(`匹配完成，结果数量: ${matchedResults.length}`);
             
+            // 保存匹配结果到window对象，供其他功能使用
+            window.matchedResults = matchedResults;
+            window.analysisResults = matchedResults;
+            
+            // 分析产品类别销售情况
+            analyzeProductCategories(matchedResults);
+            
+            // 分析销售趋势
+            analyzeSalesTrends(matchedResults);
+            
+            // 如果有主播月度资料，整合到结果中
+            if (anchorMonthlyData && anchorMonthlyData.length > 0) {
+                console.log('开始整合主播月度数据...');
+                integrateAnchorMonthlyData(matchedResults, anchorMonthlyData);
+            }
+            
             // 显示结果
             displayResults(matchedResults);
             
@@ -614,6 +700,64 @@ function startAnalysis() {
             showNotice("danger", `分析失败: ${error.message || "未知错误"}`);
         }
     });
+}
+
+// 整合主播月度资料数据
+function integrateAnchorMonthlyData(matchResults, monthlyData) {
+    try {
+        console.log('开始整合主播月度资料数据');
+        
+        // 创建主播月度数据映射
+        const anchorMonthlyMap = {};
+        
+        // 处理主播月度数据，确保主播名称作为键
+        monthlyData.forEach(item => {
+            if (item['主播名称']) {
+                // 标准化主播名称（移除空格和WY标记）
+                let anchorName = item['主播名称'].toString().trim();
+                // 移除WY标记
+                anchorName = anchorName.replace(/-WY$/, '').replace(/-wy$/, '').trim();
+                anchorMonthlyMap[anchorName] = item;
+                
+                // 也添加带WY标记的版本作为键，以便匹配
+                const wyName = `${anchorName}-WY`;
+                anchorMonthlyMap[wyName] = item;
+            }
+        });
+        
+        console.log('主播月度资料映射创建完成，包含', Object.keys(anchorMonthlyMap).length, '位主播');
+        
+        // 将月度数据存储到全局变量和窗口对象
+        window.anchorMonthlyMap = anchorMonthlyMap;
+        
+        // 更新匹配结果中主播的月度信息
+        let updatedCount = 0;
+        matchResults.forEach(result => {
+            if (result.anchor) {
+                let anchorName;
+                
+                // 提取主播名称，考虑不同的数据结构
+                if (typeof result.anchor === 'object' && result.anchor.name) {
+                    anchorName = result.anchor.name.toString().trim();
+                } else if (typeof result.anchor === 'string') {
+                    anchorName = result.anchor.trim();
+                }
+                
+                // 如果找到主播名称并且存在对应的月度数据
+                if (anchorName && anchorMonthlyMap[anchorName]) {
+                    // 添加月度数据到结果中
+                    result.monthlyData = anchorMonthlyMap[anchorName];
+                    updatedCount++;
+                }
+            }
+        });
+        
+        console.log(`主播月度资料整合完成，已更新 ${updatedCount} 条记录`);
+        return true;
+    } catch (error) {
+        console.error('整合主播月度资料时出错:', error);
+        return false;
+    }
 }
 
 // 处理表格数据，获取主播排期信息
@@ -1792,10 +1936,21 @@ function clearData() {
     salesData = null;
     scheduleData = null;
     matchedResults = null;
+    salesFileData = null;
+    scheduleFileData = null;
+    anchorMonthlyData = null;
+    window.anchorMonthlyMap = null;
+    window.matchedResults = null;
+    window.analysisResults = null;
+    window.productCategoryAnalysis = {};
     
     // 重置UI状态
     document.getElementById('sales-status').innerHTML = '';
     document.getElementById('schedule-status').innerHTML = '';
+    const anchorMonthlyStatus = document.getElementById('anchor-monthly-status');
+    if (anchorMonthlyStatus) {
+        anchorMonthlyStatus.innerHTML = '';
+    }
     
     // 隐藏结果区域
     if (resultsSection) {
@@ -1810,9 +1965,11 @@ function clearData() {
     // 清空文件选择输入框
     if (salesFileInput) salesFileInput.value = '';
     if (scheduleFileInput) scheduleFileInput.value = '';
+    const anchorMonthlyInput = document.getElementById('anchor-monthly-file');
+    if (anchorMonthlyInput) anchorMonthlyInput.value = '';
     
     // 重置文件详情显示
-    const fileInfoIds = ['sales-file-info', 'schedule-file-info'];
+    const fileInfoIds = ['sales-file-info', 'schedule-file-info', 'anchor-monthly-file-info'];
     fileInfoIds.forEach(id => {
         const fileInfo = document.getElementById(id);
         if (fileInfo) {
@@ -5114,4 +5271,111 @@ function createAndManageModal(modalId, modalContent, options = {}) {
     
     // 返回模态框控制器
     return modalController;
+}
+
+// 分析销售趋势数据
+function analyzeSalesTrends(results) {
+    try {
+        console.log('开始分析销售趋势数据...');
+        
+        if (!results || results.length === 0) {
+            console.warn('没有有效的匹配结果，无法分析销售趋势');
+            return;
+        }
+        
+        // 按日期分组销售数据
+        const salesByDate = {};
+        // 按时段分组销售数据
+        const salesByTimeSlot = {};
+        // 按主播分组销售数据
+        const salesByAnchor = {};
+        
+        // 统计销售总额
+        let totalSales = 0;
+        
+        // 处理每一条匹配结果
+        results.forEach(result => {
+            if (!result) return;
+            
+            // 获取销售信息
+            const saleInfo = extractSaleInfo(result.sale);
+            const price = parseFloat(saleInfo.price) || 0;
+            
+            // 累计总销售额
+            totalSales += price;
+            
+            // 按日期统计
+            let saleDate = result.date || '';
+            if (!saleDate && result.sale) {
+                saleDate = extractSaleDate(result.sale);
+            }
+            
+            if (saleDate) {
+                if (!salesByDate[saleDate]) {
+                    salesByDate[saleDate] = {
+                        count: 0,
+                        amount: 0
+                    };
+                }
+                salesByDate[saleDate].count++;
+                salesByDate[saleDate].amount += price;
+            }
+            
+            // 按时段统计
+            let timeSlot = result.timeSlot || '';
+            if (timeSlot) {
+                if (!salesByTimeSlot[timeSlot]) {
+                    salesByTimeSlot[timeSlot] = {
+                        count: 0,
+                        amount: 0
+                    };
+                }
+                salesByTimeSlot[timeSlot].count++;
+                salesByTimeSlot[timeSlot].amount += price;
+            }
+            
+            // 按主播统计
+            let anchorName = '';
+            if (result.anchor) {
+                if (typeof result.anchor === 'object' && result.anchor.name) {
+                    anchorName = result.anchor.name.trim();
+                } else if (typeof result.anchor === 'string') {
+                    anchorName = result.anchor.trim();
+                }
+                
+                if (anchorName) {
+                    if (!salesByAnchor[anchorName]) {
+                        salesByAnchor[anchorName] = {
+                            count: 0,
+                            amount: 0,
+                            // 如果有主播月度资料，添加引用
+                            monthlyData: result.monthlyData || null
+                        };
+                    }
+                    salesByAnchor[anchorName].count++;
+                    salesByAnchor[anchorName].amount += price;
+                }
+            }
+        });
+        
+        // 将分析结果保存到全局变量和窗口对象
+        const trendsAnalysis = {
+            totalSales,
+            salesByDate,
+            salesByTimeSlot,
+            salesByAnchor
+        };
+        
+        window.trendsAnalysis = trendsAnalysis;
+        
+        console.log('销售趋势分析完成', trendsAnalysis);
+        
+        // 显示销售趋势图表
+        displaySalesTrend(results);
+        
+        return trendsAnalysis;
+    } catch (error) {
+        console.error('分析销售趋势时出错:', error);
+        return null;
+    }
 }
