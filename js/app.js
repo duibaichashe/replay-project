@@ -609,34 +609,71 @@ function processScheduleData(data) {
         const firstCell = String(row[0] || '').trim();
         const secondCell = String(row[1] || '').trim();
         
-        // 检查是否是日期行（通常包含"号"字或日期格式）
-        const isDateRow = firstCell.includes('号') || firstCell.includes('日') || firstCell.match(/\d+月\d+/) || 
-                         /\d{1,2}[-\/]\d{1,2}/.test(firstCell) || /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(firstCell);
+        console.log(`处理第 ${rowIndex+1} 行: 第一列="${firstCell}", 第二列="${secondCell}"`);
+        
+        // 增强日期行检测逻辑
+        const isDateRow = 
+            // 包含"号"或"日"字
+            firstCell.includes('号') || firstCell.includes('日') || 
+            // 月日格式（例如：2月20日、02-20等）
+            firstCell.match(/\d+月\d+/) || /\d{1,2}[-\/]\d{1,2}/.test(firstCell) || 
+            // 年月日格式
+            /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/.test(firstCell) ||
+            // 特殊格式：包含月份和日期的组合，可能带有周几信息
+            /(\d+)[月号]号?(\d+)(?:\s*[\(（]周.[\)）])?/.test(firstCell);
                         
         if (isDateRow) {
-            // 提取日期
+            // 提取日期，处理多种格式
             let dateString = '';
-            if (firstCell.includes('月') && (firstCell.includes('日') || firstCell.includes('号'))) {
-                const parts = firstCell.match(/(\d+)月(\d+)[号日]/);
-                if (parts) {
-                    currentDate = `${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-                    dateString = firstCell;
-                }
-            } else if (firstCell.includes('/') || firstCell.includes('-')) {
-                // 处理MM-DD或YYYY-MM-DD格式
+            let month = '';
+            let day = '';
+            
+            // 尝试匹配"X月X号"或"X月X日"格式
+            let dateMatch = firstCell.match(/(\d+)月(\d+)[号日]/);
+            if (dateMatch) {
+                month = dateMatch[1].padStart(2, '0');
+                day = dateMatch[2].padStart(2, '0');
+                currentDate = `${month}-${day}`;
+                dateString = firstCell;
+                console.log(`匹配到"X月X号/日"格式: ${firstCell} -> ${currentDate}`);
+            } 
+            // 尝试匹配"X月号X"格式（如"2月号20"）
+            else if ((dateMatch = firstCell.match(/(\d+)[月号]号?(\d+)/))) {
+                month = dateMatch[1].padStart(2, '0');
+                day = dateMatch[2].padStart(2, '0');
+                currentDate = `${month}-${day}`;
+                dateString = firstCell;
+                console.log(`匹配到"X月号X"格式: ${firstCell} -> ${currentDate}`);
+            }
+            // 尝试匹配MM-DD或MM/DD格式
+            else if (firstCell.includes('/') || firstCell.includes('-')) {
                 const parts = firstCell.split(/[-\/]/);
                 if (parts.length === 2) {
-                    currentDate = `${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                    month = parts[0].padStart(2, '0');
+                    day = parts[1].padStart(2, '0');
+                    currentDate = `${month}-${day}`;
                     dateString = firstCell;
+                    console.log(`匹配到MM-DD或MM/DD格式: ${firstCell} -> ${currentDate}`);
                 } else if (parts.length >= 3) {
-                    currentDate = `${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    // YYYY-MM-DD格式
+                    month = parts[1].padStart(2, '0');
+                    day = parts[2].padStart(2, '0');
+                    currentDate = `${month}-${day}`;
                     dateString = firstCell;
+                    console.log(`匹配到YYYY-MM-DD格式: ${firstCell} -> ${currentDate}`);
                 }
-            } else {
-                // 尝试其他可能的日期格式
-                const dateMatch = firstCell.match(/(\d+月\d+[号日])|(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})|(\d{1,2}[-\/]\d{1,2})/);
-                if (dateMatch) {
-                    dateString = dateMatch[0];
+            }
+            // 尝试从可能有括号和其他文本的字符串中提取数字
+            else {
+                // 提取所有数字序列
+                const numbers = firstCell.match(/\d+/g);
+                if (numbers && numbers.length >= 2) {
+                    // 假设第一个数字是月份，第二个是日期
+                    month = numbers[0].padStart(2, '0');
+                    day = numbers[1].padStart(2, '0');
+                    currentDate = `${month}-${day}`;
+                    dateString = `${month}月${day}日`;
+                    console.log(`从复杂字符串中提取日期: ${firstCell} -> ${currentDate}`);
                 }
             }
             
@@ -658,7 +695,7 @@ function processScheduleData(data) {
         
         // 如果尚未找到有效日期，跳过
         if (!currentDate || !scheduleMap[currentDate]) {
-            console.log(`第 ${rowIndex+1} 行没有关联的日期，跳过`);
+            console.log(`第 ${rowIndex+1} 行没有关联的日期，跳过: "${firstCell}"`);
             continue;
         }
         
@@ -685,7 +722,7 @@ function processScheduleData(data) {
             scheduleMap[currentDate][timeSlot] = [];
         }
         
-        // 解析旺悦和源悦档位
+        // 解析旺玥和源悦档位
         let wangTier = '非档';
         let yuanTier = '非档';
         
@@ -710,11 +747,14 @@ function processScheduleData(data) {
             // 仅添加一次主播，避免重复计算工作时长
             scheduleMap[currentDate][timeSlot].push({
                 anchor: anchorName,
-                position: `旺悦${wangTier}`,
-                brands: ['旺悦', '源悦']
+                position: {
+                    wang: wangTier,  // 旺玥档位
+                    yuan: yuanTier   // 源悦档位
+                },
+                brands: ['旺玥', '源悦']  // 该主播负责的品牌
             });
             
-            console.log(`添加主播 "${anchorName}" 到 ${currentDate} ${timeSlot}，旺悦档位: ${wangTier}，源悦档位: ${yuanTier}`);
+            console.log(`添加主播 "${anchorName}" 到 ${currentDate} ${timeSlot}，旺玥档位: ${wangTier}，源悦档位: ${yuanTier}`);
         } else {
             console.log(`主播 "${anchorName}" 已存在于 ${currentDate} ${timeSlot} 时段，跳过添加`);
         }
@@ -734,6 +774,10 @@ function processScheduleData(data) {
     }
     
     console.log('最终排班表生成完成');
+    
+    // 保存排班表到window对象，以便在其他地方访问
+    window.scheduleMap = scheduleMap;
+    
     return scheduleMap;
 }
 
@@ -906,10 +950,10 @@ function matchSalesWithSchedule(salesData, scheduleMap) {
                 console.log(`分析商品名称: "${productName}"`);
             }
             
-            // 增强品牌识别规则 - 旺悦/源悦
-            if (productName.includes('旺玥') || productName.includes('旺悦') || 
+            // 增强品牌识别规则 - 旺玥/源悦
+            if (productName.includes('旺玥') || 
                 productName.includes('旺奶') || productName.includes('旺粉')) {
-                result.productBrand = '旺悦';
+                result.productBrand = '旺玥';
             } else if (productName.includes('源玥') || productName.includes('源悦') || 
                        productName.includes('星') || productName.includes('皇家') || 
                        productName.includes('美素佳儿') || /Friso|MeadJohnson|aptamil/i.test(productName)) {
@@ -941,9 +985,9 @@ function matchSalesWithSchedule(salesData, scheduleMap) {
                 result.productBrand = '源悦';
                 if (index < 10) console.log(`根据特征词判断为源悦产品`);
             } else {
-                // 默认为旺悦
-                result.productBrand = '旺悦';
-                if (index < 10) console.log(`未明确识别品牌，默认设为旺悦产品`);
+                // 默认为旺玥
+                result.productBrand = '旺玥';
+                if (index < 10) console.log(`未明确识别品牌，默认设为旺玥产品`);
             }
         }
         
@@ -1092,9 +1136,15 @@ function matchSalesWithSchedule(salesData, scheduleMap) {
                         if (index < 10) console.log(`该时间段有 ${anchors.length} 个主播信息:`, anchors);
                         
                         // 根据产品品牌选择合适的主播信息
-                        const matchingAnchors = anchors.filter(a => 
-                            String(a.position || '').includes(result.productBrand || '')
-                        );
+                        const matchingAnchors = anchors.filter(a => {
+                            // 新的position结构是对象，需要检查相应品牌的档位
+                            if (result.productBrand === '旺玥' && a.position && a.position.wang) {
+                                return true;  // 该主播有旺玥档位信息
+                            } else if (result.productBrand === '源悦' && a.position && a.position.yuan) {
+                                return true;  // 该主播有源悦档位信息
+                            }
+                            return false;
+                        });
                         
                         if (matchingAnchors.length > 0) {
                             // 从匹配品牌的主播中选择一个
@@ -1114,16 +1164,21 @@ function matchSalesWithSchedule(salesData, scheduleMap) {
                             
                             // 调整档位以匹配产品品牌
                             if (result.productBrand) {
-                                if (result.productBrand === '旺悦') {
-                                    result.position = `旺悦${result.productTier || '非档'}`;
+                                if (result.productBrand === '旺玥') {
+                                    // 使用主播对应品牌的档位
+                                    const wangTier = fallbackAnchor.position && fallbackAnchor.position.wang ? 
+                                        fallbackAnchor.position.wang : result.productTier || '非档';
+                                    result.position = `旺玥${wangTier}`;
                                 } else if (result.productBrand === '源悦') {
-                                    result.position = `源悦${result.productTier || '非档'}`;
+                                    const yuanTier = fallbackAnchor.position && fallbackAnchor.position.yuan ? 
+                                        fallbackAnchor.position.yuan : result.productTier || '非档';
+                                    result.position = `源悦${yuanTier}`;
                                 } else {
-                                    result.position = fallbackAnchor.position;
+                                    result.position = JSON.stringify(fallbackAnchor.position);
                                 }
                                 if (index < 10) console.log(`调整档位以匹配品牌: ${result.position}`);
                             } else {
-                                result.position = fallbackAnchor.position;
+                                result.position = JSON.stringify(fallbackAnchor.position);
                             }
                         }
                     } else {
@@ -1154,7 +1209,7 @@ function matchSalesWithSchedule(salesData, scheduleMap) {
     
     // 输出每个品牌的匹配统计
     const brandStats = {
-        '旺悦': { total: 0, matched: 0 },
+        '旺玥': { total: 0, matched: 0 },
         '源悦': { total: 0, matched: 0 }
     };
     
@@ -1455,13 +1510,13 @@ function displayResultsPage(results, page) {
             const positionText = String(result.position).trim();
             
             // 根据档位类型设置不同的徽章样式
-            if (positionText.includes('旺悦')) {
+            if (positionText.includes('旺玥')) {
                 if (positionText.includes('大档')) {
-                    positionDisplay = '<span class="badge bg-danger">旺悦大档</span>';
+                    positionDisplay = '<span class="badge bg-danger">旺玥大档</span>';
                 } else if (positionText.includes('小档')) {
-                    positionDisplay = '<span class="badge bg-warning text-dark">旺悦小档</span>';
+                    positionDisplay = '<span class="badge bg-warning text-dark">旺玥小档</span>';
                 } else {
-                    positionDisplay = '<span class="badge bg-secondary">旺悦非档</span>';
+                    positionDisplay = '<span class="badge bg-secondary">旺玥非档</span>';
                 }
             } else if (positionText.includes('源悦')) {
                 if (positionText.includes('大档')) {
@@ -1477,13 +1532,13 @@ function displayResultsPage(results, page) {
             }
         } else if (productBrand) {
             // 如果有品牌和档位信息但没有匹配成功，仍然显示产品信息
-            if (productBrand === '旺悦') {
+            if (productBrand === '旺玥') {
                 if (productTier === '大档') {
-                    positionDisplay = '<span class="badge bg-danger opacity-50">旺悦大档</span>';
+                    positionDisplay = '<span class="badge bg-danger opacity-50">旺玥大档</span>';
                 } else if (productTier === '小档') {
-                    positionDisplay = '<span class="badge bg-warning text-dark opacity-50">旺悦小档</span>';
+                    positionDisplay = '<span class="badge bg-warning text-dark opacity-50">旺玥小档</span>';
                 } else {
-                    positionDisplay = '<span class="badge bg-secondary opacity-50">旺悦非档</span>';
+                    positionDisplay = '<span class="badge bg-secondary opacity-50">旺玥非档</span>';
                 }
             } else if (productBrand === '源悦') {
                 if (productTier === '大档') {
@@ -2129,6 +2184,8 @@ function displayProductCategoryAnalysis() {
         let totalWangSales = 0;
         let totalRoyalSales = 0;
         let grandTotal = 0;
+        
+        // 将固定的总工作时长改为动态计算
         let totalWorkHours = 0;
         
         // 为每个主播添加一行 - 改进样式
@@ -2137,9 +2194,13 @@ function displayProductCategoryAnalysis() {
             
             // 获取工作时长
             const workHours = calculateAnchorWorkHours(anchor);
-            const hourValue = parseInt(workHours);
-            if (!isNaN(hourValue)) {
-                totalWorkHours += hourValue;
+            
+            // 累加到总工作时长
+            if (workHours !== '-') {
+                const hours = parseInt(workHours.replace('h', ''));
+                if (!isNaN(hours)) {
+                    totalWorkHours += hours;
+                }
             }
             
             // 累加总销售额
@@ -3973,21 +4034,30 @@ function calculateAnchorWorkHours(anchorName) {
         return '-';
     }
     
-    console.log(`计算主播 ${anchorName} 的工作时长...`);
+    // 获取所有日期
+    const allDates = Object.keys(window.scheduleMap);
+    console.log(`开始计算主播 ${anchorName} 的工作时长，排班表包含 ${allDates.length} 个日期:`, allDates);
     
+    // 移除预设的工作时长，完全依靠排班表数据进行计算
     let totalHours = 0;
     let timeSlotCounted = new Set(); // 用于记录已计算过的日期和时间段组合
+    let workDetails = []; // 记录工作细节用于调试
     
     // 遍历每一天的排班
     Object.entries(window.scheduleMap).forEach(([date, daySchedule]) => {
+        const timeSlots = Object.keys(daySchedule);
+        console.log(`检查日期 ${date}，有 ${timeSlots.length} 个时间段`);
+        
         // 遍历每个时间段
         Object.entries(daySchedule).forEach(([timeSlot, anchors]) => {
+            console.log(`  - 时间段 ${timeSlot}，有 ${anchors.length} 个主播`);
+            
             // 检查该时间段是否有这个主播
-            const hasAnchor = anchors.some(a => 
+            const matchingAnchors = anchors.filter(a => 
                 a.anchor && a.anchor.trim() === anchorName.trim()
             );
             
-            if (hasAnchor) {
+            if (matchingAnchors.length > 0) {
                 const timeSlotKey = `${date}-${timeSlot}`;
                 
                 // 确保每个时段只计算一次
@@ -3995,10 +4065,22 @@ function calculateAnchorWorkHours(anchorName) {
                     totalHours += 1; // 每个时间段计为1小时
                     timeSlotCounted.add(timeSlotKey);
                     
-                    console.log(`主播 ${anchorName} 在 ${date} ${timeSlot} 时段工作，当前累计: ${totalHours}小时`);
+                    const detail = `${date} ${timeSlot} (累计: ${totalHours}h)`;
+                    workDetails.push(detail);
+                    console.log(`  >>> 主播 ${anchorName} 在 ${detail}`);
+                } else {
+                    console.log(`  >>> 时间段 ${timeSlotKey} 已计算过，跳过`);
                 }
+            } else {
+                console.log(`  --- 主播 ${anchorName} 不在此时间段`);
             }
         });
+    });
+    
+    // 记录详细工作时段，便于调试
+    console.log(`主播 ${anchorName} 的工作时段汇总 (${workDetails.length} 个):`);
+    workDetails.forEach((detail, index) => {
+        console.log(`  ${index+1}. ${detail}`);
     });
     
     console.log(`主播 ${anchorName} 总工作时长: ${totalHours}小时`);
