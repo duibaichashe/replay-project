@@ -340,37 +340,102 @@ function prepareAnchorDataForAI() {
     const anchorData = {};
     
     try {
-        // 从产品类别分析中获取主播销售数据
-        if (window.productCategoryAnalysis) {
-            Object.entries(window.productCategoryAnalysis).forEach(([anchorName, categoryData]) => {
-                // 排除非对象数据
-                if (typeof categoryData !== 'object' || categoryData === null) return;
+        console.log('开始准备主播数据...');
+        
+        // 按品牌分类统计每个主播的销售数据
+        if (window.matchedResults) {
+            // 首先按主播分组所有订单
+            const anchorOrderMap = {};
+            
+            window.matchedResults.forEach(result => {
+                if (!result || !result.matched || !result.anchor) return;
                 
-                // 计算总销售额
-                const categories = ['源悦', '莼悦', '旺玥', '皇家'];
-                const totalSales = categories.reduce((sum, category) => {
-                    return sum + (parseFloat(categoryData[category]) || 0);
-                }, 0);
+                // 提取主播名称
+                let anchorName;
+                if (typeof result.anchor === 'object' && result.anchor.name) {
+                    anchorName = result.anchor.name.toString().trim();
+                } else if (typeof result.anchor === 'string') {
+                    anchorName = result.anchor.trim();
+                } else {
+                    return;
+                }
                 
-                // 创建主播数据对象
+                // 初始化主播数据
+                if (!anchorOrderMap[anchorName]) {
+                    anchorOrderMap[anchorName] = [];
+                }
+                
+                // 添加订单到主播
+                anchorOrderMap[anchorName].push(result);
+            });
+            
+            // 处理每个主播的订单
+            Object.entries(anchorOrderMap).forEach(([anchorName, orders]) => {
+                // 初始化主播数据
                 anchorData[anchorName] = {
                     name: anchorName,
                     salesData: {
-                        totalSales,
-                        categoryBreakdown: {
-                            源悦类: categoryData['源悦'] || 0,
-                            莼悦类: categoryData['莼悦'] || 0,
-                            旺玥类: categoryData['旺玥'] || 0,
-                            皇家类: categoryData['皇家'] || 0
+                        totalSales: 0,
+                        totalOrders: orders.length,
+                        brandStats: {
+                            源悦: { orders: 0, amount: 0 },
+                            莼悦: { orders: 0, amount: 0 },
+                            旺玥: { orders: 0, amount: 0 },
+                            皇家: { orders: 0, amount: 0 }
                         }
                     },
-                    // 销售订单数量
-                    orderCount: 0,
-                    // 销售产品数量
-                    productCount: 0,
-                    // 主播工作时长
-                    workHours: 0
+                    orderCount: orders.length,
+                    productCount: 0
                 };
+                
+                // 统计不重复的产品
+                const productSet = new Set();
+                
+                // 处理每个订单
+                orders.forEach(order => {
+                    if (!order.sale) return;
+                    
+                    const saleInfo = extractSaleInfo(order.sale);
+                    const productName = saleInfo.product || '';
+                    const price = parseFloat(saleInfo.price) || 0;
+                    
+                    // 添加产品到集合
+                    if (productName && productName !== '-') {
+                        productSet.add(productName);
+                    }
+                    
+                    // 确定品牌
+                    let brand = 'other';
+                    if (productName.includes('源悦')) {
+                        brand = '源悦';
+                    } else if (productName.includes('莼悦')) {
+                        brand = '莼悦';
+                    } else if (productName.includes('旺玥')) {
+                        brand = '旺玥';
+                    } else if (productName.includes('皇家') && !productName.includes('莼悦') && !productName.includes('旺玥')) {
+                        brand = '皇家';
+                    }
+                    
+                    // 更新品牌统计
+                    if (anchorData[anchorName].salesData.brandStats[brand]) {
+                        anchorData[anchorName].salesData.brandStats[brand].orders++;
+                        anchorData[anchorName].salesData.brandStats[brand].amount += price;
+                    }
+                    
+                    // 更新总销售额
+                    anchorData[anchorName].salesData.totalSales += price;
+                });
+                
+                // 更新产品数量
+                anchorData[anchorName].productCount = productSet.size;
+                
+                // 添加工作时长数据
+                if (typeof calculateAnchorWorkHours === 'function') {
+                    const workHours = calculateAnchorWorkHours(anchorName);
+                    if (workHours && workHours !== '-') {
+                        anchorData[anchorName].workHours = parseFloat(workHours);
+                    }
+                }
                 
                 // 如果有主播月度资料数据，添加到分析数据中
                 if (window.anchorMonthlyMap && window.anchorMonthlyMap[anchorName]) {
@@ -387,52 +452,11 @@ function prepareAnchorDataForAI() {
                         }
                     });
                 }
-                
-                // 从匹配结果中获取更多详情
-                if (window.matchedResults) {
-                    // 过滤出该主播的订单
-                    const anchorOrders = window.matchedResults.filter(result => {
-                        if (!result || !result.anchor) return false;
-                        
-                        // 提取主播名称
-                        let matchAnchorName;
-                        if (typeof result.anchor === 'object' && result.anchor.name) {
-                            matchAnchorName = result.anchor.name.toString().trim();
-                        } else if (typeof result.anchor === 'string') {
-                            matchAnchorName = result.anchor.trim();
-                        }
-                        
-                        return matchAnchorName === anchorName;
-                    });
-                    
-                    // 更新订单数量
-                    anchorData[anchorName].orderCount = anchorOrders.length;
-                    
-                    // 统计产品数量和类型
-                    const productSet = new Set();
-                    anchorOrders.forEach(order => {
-                        if (order.sale) {
-                            const saleInfo = extractSaleInfo(order.sale);
-                            if (saleInfo.product) {
-                                productSet.add(saleInfo.product);
-                            }
-                        }
-                    });
-                    
-                    anchorData[anchorName].productCount = productSet.size;
-                    
-                    // 获取工作时长
-                    if (typeof calculateAnchorWorkHours === 'function') {
-                        const workHours = calculateAnchorWorkHours(anchorName);
-                        if (workHours && workHours !== '-') {
-                            anchorData[anchorName].workHours = parseFloat(workHours);
-                        }
-                    }
-                }
             });
         }
         
         console.log('已准备主播数据用于AI分析:', Object.keys(anchorData).length, '位主播');
+        console.log('主播数据详情:', anchorData);
         return anchorData;
         
     } catch (error) {
@@ -469,163 +493,269 @@ async function performDemoAIAnalysis(anchorData) {
 }
 
 /**
- * 动态分析生成引擎 - 完全基于输入数据生成分析，没有预设内容
+ * 演示模式 - 生成动态分析结果
  */
 function generateDynamicAnalysis(anchorName, data) {
-    // 分析结果容器
-    let analysis = '';
+    // 准备基础数据
+    const totalSales = data.salesData.totalSales || 0;
+    const orderCount = data.orderCount || 0;
+    const productCount = data.productCount || 0;
+    const workHours = data.workHours || 0;
+    
+    // 设置变量来存储分析结果
     let summary = '';
-    
-    // 动态收集需要分析的指标
+    let analysis = '';
     const metrics = [];
-    const insights = [];
-    const suggestions = [];
     
-    // 1. 分析销售业绩
-    analysis += `## 销售业绩分析\n\n`;
-    
-    // 计算总销售额
-    const totalSales = data.salesData.totalSales;
-    analysis += `${anchorName}主播在本期分析中销售总额达到¥${totalSales.toLocaleString('zh-CN')}，`;
-    
-    // 销售业绩指标
-    if (totalSales > 100000) {
-        metrics.push('销售业绩优秀');
-        insights.push(`销售总额超过¥${(100000).toLocaleString('zh-CN')}，表现出色`);
-    } else if (totalSales > 50000) {
-        metrics.push('销售业绩良好');
-        insights.push(`销售总额达到¥${totalSales.toLocaleString('zh-CN')}，表现稳定`);
-    } else {
-        metrics.push('销售业绩有提升空间');
-        insights.push(`销售总额为¥${totalSales.toLocaleString('zh-CN')}，有较大提升空间`);
-        suggestions.push(`提升单场直播销售额，考虑优化产品选择和促销策略`);
-    }
-    
-    // 分析类别销售情况
-    const categories = Object.entries(data.salesData.categoryBreakdown)
-        .sort((a, b) => b[1] - a[1]);
-    
-    if (categories.length > 0) {
-        const topCategory = categories[0];
-        const topCategoryPercentage = (topCategory[1] / totalSales * 100).toFixed(1);
+    try {
+        // 开始分析
+        analysis = `## ${anchorName} 销售绩效分析\n\n`;
         
-        analysis += `其中${topCategory[0]}占比最高，达到了${topCategoryPercentage}%（¥${topCategory[1].toLocaleString('zh-CN')}）。`;
+        // 分析总体销售情况
+        analysis += `### 1. 销售绩效评估\n\n`;
         
-        metrics.push(`${topCategory[0]}销售占比${topCategoryPercentage}%`);
-        
-        // 分析类别多样性
-        if (categories.length > 1) {
-            analysis += `\n\n在产品多样性方面，该主播销售了${categories.length}个不同类别的产品，`;
-            
-            // 计算类别集中度
-            const concentration = topCategory[1] / totalSales;
-            if (concentration > 0.8) {
-                analysis += `但销售过于集中在${topCategory[0]}上。`;
-                insights.push(`产品类别销售集中度过高(${(concentration * 100).toFixed(1)}%)`);
-                suggestions.push(`尝试在其他类别产品上增加营销力度，平衡各类别销售占比`);
-            } else if (concentration > 0.6) {
-                analysis += `销售较为集中，但仍有一定的多样性。`;
-                insights.push(`产品类别销售相对集中(${(concentration * 100).toFixed(1)}%)`);
+        if (totalSales > 0) {
+            // 销售额评估
+            if (totalSales > 50000) {
+                analysis += `主播${anchorName}的总销售额达到了¥${totalSales.toLocaleString('zh-CN')}，表现出色。`;
+                metrics.push('销售额出色');
+            } else if (totalSales > 10000) {
+                analysis += `主播${anchorName}的总销售额为¥${totalSales.toLocaleString('zh-CN')}，表现良好。`;
+                metrics.push('销售额良好');
             } else {
-                analysis += `展现了良好的产品多样性，各类别分布较为均衡。`;
-                insights.push(`产品销售类别分布均衡，多样性良好`);
+                analysis += `主播${anchorName}的总销售额为¥${totalSales.toLocaleString('zh-CN')}，有提升空间。`;
+                metrics.push('销售额有待提升');
+            }
+            
+            // 加入订单信息
+            if (orderCount > 0) {
+                const avgOrderValue = totalSales / orderCount;
+                analysis += ` 共成交${orderCount}单，平均客单价为¥${avgOrderValue.toLocaleString('zh-CN', {maximumFractionDigits: 0})}。`;
+                
+                if (avgOrderValue > 3000) {
+                    analysis += ` 客单价较高，表明销售了高价值产品。`;
+                    metrics.push('高客单价');
+                } else if (avgOrderValue < 800) {
+                    analysis += ` 客单价偏低，可以考虑提高高价值产品的销售比例。`;
+                    metrics.push('客单价偏低');
+                }
+            }
+            
+            analysis += '\n\n';
+            
+            // 分析品牌销售分布
+            analysis += `**品牌销售分布：**\n\n`;
+            let brandDistribution = '';
+            
+            // 遍历所有品牌
+            Object.entries(data.salesData.brandStats).forEach(([brand, stats]) => {
+                if (stats.orders > 0) {
+                    const percentage = (stats.amount / totalSales * 100).toFixed(1);
+                    brandDistribution += `- ${brand}：${stats.orders}单，销售额¥${stats.amount.toLocaleString('zh-CN')}（${percentage}%）\n`;
+                }
+            });
+            
+            if (brandDistribution) {
+                analysis += brandDistribution + '\n';
+            } else {
+                analysis += '未能识别具体品牌销售数据\n\n';
+            }
+            
+            // 找到销售额最高的品牌
+            const topBrand = Object.entries(data.salesData.brandStats)
+                .filter(([brand, stats]) => stats.orders > 0)
+                .sort((a, b) => b[1].amount - a[1].amount)[0];
+                
+            if (topBrand) {
+                const [brandName, stats] = topBrand;
+                const percentage = (stats.amount / totalSales * 100).toFixed(1);
+                analysis += `主播在${brandName}品牌的表现最为突出，占总销售额的${percentage}%。`;
+                
+                // 分析品牌集中度
+                if (percentage > 80) {
+                    analysis += ` 但销售过于集中在单一品牌，建议适当扩展其他品牌的销售。`;
+                    metrics.push('品牌集中度过高');
+                } else if (percentage < 40) {
+                    analysis += ` 主播销售的品牌较为分散，没有明显的专注点。`;
+                    metrics.push('品牌分散');
+                }
+                
+                analysis += '\n\n';
+            }
+            
+            // 分析效率
+            if (workHours > 0) {
+                const salesPerHour = totalSales / workHours;
+                analysis += `**效率分析：** 主播直播时长约${workHours}小时，平均每小时销售额为¥${salesPerHour.toLocaleString('zh-CN', {maximumFractionDigits: 0})}。`;
+                
+                if (salesPerHour > 5000) {
+                    analysis += ` 销售效率很高，说明主播能够有效转化流量。`;
+                    metrics.push('高销售效率');
+                } else if (salesPerHour < 1000) {
+                    analysis += ` 销售效率有待提高，建议优化直播内容和销售技巧。`;
+                    metrics.push('销售效率低');
+                }
+                
+                analysis += '\n\n';
+            }
+        } else {
+            analysis += `主播${anchorName}暂无销售数据或数据异常，无法进行深入分析。\n\n`;
+        }
+        
+        // 优势与不足分析
+        analysis += `### 2. 优势与不足\n\n`;
+        
+        // 根据收集的指标生成优势
+        const strengths = [];
+        if (metrics.includes('销售额出色') || metrics.includes('销售额良好')) {
+            strengths.push('销售能力强');
+        }
+        if (metrics.includes('高客单价')) {
+            strengths.push('善于销售高价值产品');
+        }
+        if (metrics.includes('高销售效率')) {
+            strengths.push('直播转化效率高');
+        }
+        
+        // 如果没有找到明确优势，添加一些通用优势
+        if (strengths.length === 0) {
+            if (productCount > 5) {
+                strengths.push('能够销售多种产品');
+            }
+            if (orderCount > 10) {
+                strengths.push('有一定的成交能力');
             }
         }
         
-        // 查找销售为零的类别
-        const zeroCategories = categories.filter(cat => cat[1] === 0);
-        if (zeroCategories.length > 0) {
-            const zeroCatNames = zeroCategories.map(cat => cat[0]).join('、');
-            insights.push(`${zeroCatNames}类别销售为零`);
-            suggestions.push(`尝试拓展${zeroCatNames}类别产品，增加销售多样性`);
+        // 生成优势文本
+        if (strengths.length > 0) {
+            analysis += `**优势：**\n\n`;
+            strengths.forEach(strength => {
+                analysis += `- ${strength}\n`;
+            });
+            analysis += '\n';
         }
-    }
-    
-    // 2. 工作效率分析
-    if (data.workHours > 0) {
-        analysis += `\n\n## 工作效率分析\n\n`;
         
-        const hourlyRate = totalSales / data.workHours;
-        analysis += `${anchorName}主播总工作时长为${data.workHours}小时，平均每小时销售额为¥${hourlyRate.toLocaleString('zh-CN', {maximumFractionDigits: 2})}。`;
+        // 根据收集的指标生成不足
+        const weaknesses = [];
+        if (metrics.includes('销售额有待提升')) {
+            weaknesses.push('整体销售表现不足');
+        }
+        if (metrics.includes('客单价偏低')) {
+            weaknesses.push('客单价较低，高价值产品销售不足');
+        }
+        if (metrics.includes('销售效率低')) {
+            weaknesses.push('直播时间利用效率不高');
+        }
+        if (metrics.includes('品牌集中度过高')) {
+            weaknesses.push('品牌销售过于单一，缺乏多元化');
+        }
+        if (metrics.includes('品牌分散')) {
+            weaknesses.push('缺乏明确的专注点，品牌定位不清晰');
+        }
         
-        metrics.push(`小时产出¥${hourlyRate.toLocaleString('zh-CN', {maximumFractionDigits: 0})}`);
+        // 如果没有找到明确劣势，添加一些改进点
+        if (weaknesses.length === 0) {
+            if (productCount < 3) {
+                weaknesses.push('产品多样性不足');
+            }
+            if (orderCount < 5) {
+                weaknesses.push('成交单数较少');
+            }
+        }
         
-        // 根据时效比动态生成评价
-        if (hourlyRate > 10000) {
-            analysis += `时效比非常高，展现出色的销售能力。`;
-            insights.push(`时效比表现优异，销售效率高`);
-        } else if (hourlyRate > 5000) {
-            analysis += `时效比良好，销售效率处于较高水平。`;
-            insights.push(`时效比表现良好`);
+        // 生成不足文本
+        if (weaknesses.length > 0) {
+            analysis += `**不足：**\n\n`;
+            weaknesses.forEach(weakness => {
+                analysis += `- ${weakness}\n`;
+            });
+            analysis += '\n';
+        }
+        
+        // 改进建议
+        analysis += `### 3. 改进建议\n\n`;
+        
+        // 根据不足生成改进建议
+        const suggestions = [];
+        
+        if (weaknesses.includes('整体销售表现不足')) {
+            suggestions.push('加强产品知识培训，提高产品讲解的专业性和说服力');
+            suggestions.push('优化直播间标题和封面，提高点击率');
+        }
+        
+        if (weaknesses.includes('客单价偏低，高价值产品销售不足')) {
+            suggestions.push('调整产品结构，增加高价值产品的展示和推荐频次');
+            suggestions.push('学习高单价产品的销售话术和成交技巧');
+        }
+        
+        if (weaknesses.includes('直播时间利用效率不高')) {
+            suggestions.push('优化直播时间规划，将重点产品安排在流量高峰期');
+            suggestions.push('提高互动环节的转化效率，减少无效内容');
+        }
+        
+        if (weaknesses.includes('品牌销售过于单一，缺乏多元化')) {
+            suggestions.push('适当扩展其他品牌的销售，降低单一品牌依赖风险');
+            suggestions.push('尝试交叉销售不同品牌的互补产品');
+        }
+        
+        if (weaknesses.includes('缺乏明确的专注点，品牌定位不清晰')) {
+            suggestions.push('明确个人定位，选择2-3个擅长品牌重点发展');
+            suggestions.push('打造与特定品牌关联的个人专业形象');
+        }
+        
+        // 如果建议不足，添加通用建议
+        if (suggestions.length < 3) {
+            suggestions.push('增加粉丝互动环节，提高粉丝黏性和活跃度');
+            suggestions.push('定期分析销售数据，找出最佳销售时段和产品类型');
+            suggestions.push('建立售后回访机制，增加复购率');
+        }
+        
+        // 限制建议数量在3-5个
+        const finalSuggestions = suggestions.slice(0, Math.min(5, Math.max(3, suggestions.length)));
+        
+        // 生成建议文本
+        finalSuggestions.forEach((suggestion, index) => {
+            analysis += `${index + 1}. ${suggestion}\n`;
+        });
+        
+        analysis += '\n';
+        
+        // 总结
+        analysis += `### 4. 总结\n\n`;
+        
+        // 生成总结
+        let summaryText = `主播${anchorName}`;
+        
+        if (totalSales > 50000) {
+            summaryText += `销售业绩表现优秀，`;
+        } else if (totalSales > 10000) {
+            summaryText += `销售业绩表现良好，`;
         } else {
-            analysis += `有提升销售效率的空间。`;
-            insights.push(`时效比有提升空间`);
-            suggestions.push(`优化直播时间规划，提高单位时间销售额`);
+            summaryText += `销售业绩有提升空间，`;
         }
-    }
-    
-    // 3. 月度指标分析
-    if (data.monthlyMetrics) {
-        analysis += `\n\n## 月度指标分析\n\n`;
         
-        // 分析各项月度指标
-        const metricAnalysisResults = analyzeMonthlyMetrics(data.monthlyMetrics);
-        analysis += metricAnalysisResults.analysis;
-        
-        // 合并指标、洞察和建议
-        metrics.push(...metricAnalysisResults.metrics);
-        insights.push(...metricAnalysisResults.insights);
-        suggestions.push(...metricAnalysisResults.suggestions);
-    }
-    
-    // 4. 生成综合建议
-    analysis += `\n\n## 改进建议\n\n`;
-    
-    // 根据之前的分析动态生成建议
-    if (suggestions.length === 0) {
-        // 如果没有特定建议，给出一般性建议
-        if (metrics.some(m => m.includes('优秀') || m.includes('良好'))) {
-            suggestions.push(`保持现有的优势表现，尝试将成功经验应用到其他产品类别`);
-            suggestions.push(`考虑建立个人IP和品牌，进一步提升粉丝忠诚度和购买转化率`);
-        } else {
-            suggestions.push(`系统性分析直播数据，找出销售转化率较高的产品和直播时段`);
-            suggestions.push(`与团队协作优化直播策略，提升整体销售业绩`);
+        if (strengths.length > 0) {
+            summaryText += `优势在于${strengths[0]}，`;
         }
-    }
-    
-    // 确保至少有3点建议
-    while (suggestions.length < 3) {
-        const genericSuggestions = [
-            `定期分析销售数据，及时调整产品组合和营销策略`,
-            `提升直播互动性，增加用户参与感和停留时间`,
-            `优化直播间视觉呈现，提升专业感和产品吸引力`,
-            `尝试与其他主播合作，扩大受众群体`,
-            `关注行业趋势，及时调整产品策略以适应市场变化`
-        ];
         
-        // 随机选择一个通用建议（确保不重复）
-        const randomIndex = Math.floor(Math.random() * genericSuggestions.length);
-        const suggestion = genericSuggestions[randomIndex];
-        
-        if (!suggestions.includes(suggestion)) {
-            suggestions.push(suggestion);
+        if (weaknesses.length > 0) {
+            summaryText += `需要改进的是${weaknesses[0]}。`;
         }
-    }
-    
-    // 添加建议到分析中
-    suggestions.forEach((suggestion, index) => {
-        analysis += `${index + 1}. ${suggestion}\n`;
-    });
-    
-    // 创建总结：选取主要指标和最重要的建议
-    summary = `销售额¥${totalSales.toLocaleString('zh-CN')}`;
-    
-    if (categories.length > 0) {
-        summary += `，主要销售${categories[0][0]}`;
-    }
-    
-    if (suggestions.length > 0) {
-        summary += `，${suggestions[0]}`;
+        
+        if (finalSuggestions.length > 0) {
+            summaryText += `建议${finalSuggestions[0].toLowerCase()}，以提升整体销售表现。`;
+        }
+        
+        analysis += summaryText;
+        
+        // 设置简短总结
+        summary = summaryText;
+        
+    } catch (error) {
+        console.error('生成动态分析时出错:', error);
+        summary = `无法为主播${anchorName}生成完整分析`;
+        analysis = `生成分析时出错: ${error.message}`;
     }
     
     return {
@@ -788,20 +918,25 @@ async function performRealAIAnalysis(anchorData) {
  * 生成发送给AI的提示信息
  */
 function generateAIPrompt(anchorName, data) {
+    // 格式化品牌销售数据
+    const brandSummaries = [];
+    for (const [brand, stats] of Object.entries(data.salesData.brandStats)) {
+        if (stats.orders > 0) {
+            brandSummaries.push(`${brand}销售${stats.orders}单，销售额${stats.amount.toLocaleString('zh-CN')}元`);
+        }
+    }
+    
     return {
         role: "user",
-        content: `请你作为一位专业的电商直播分析师，根据以下提供的主播数据，进行全面的分析并给出专业建议。请用中文回答。
+        content: `你现在是一个20年资深高级直播运营，请基于以下数据，对主播进行专业分析，提供改进建议。
         
 主播名称: ${anchorName}
 
-销售数据:
+销售数据概况:
 - 总销售额: ${data.salesData.totalSales.toLocaleString('zh-CN')}元
-- 源悦类: ${data.salesData.categoryBreakdown.源悦类.toLocaleString('zh-CN')}元
-- 莼悦类: ${data.salesData.categoryBreakdown.莼悦类.toLocaleString('zh-CN')}元
-- 旺玥类: ${data.salesData.categoryBreakdown.旺玥类.toLocaleString('zh-CN')}元
-- 皇家类: ${data.salesData.categoryBreakdown.皇家类.toLocaleString('zh-CN')}元
-- 订单数量: ${data.orderCount || '未知'}
-- 产品种类数: ${data.productCount || '未知'}
+- 总订单数: ${data.salesData.totalOrders}单
+- 按品牌分类: ${brandSummaries.join('，')}
+- 销售产品种类数: ${data.productCount || '未知'}种
 - 直播时长: ${data.workHours || '未知'}小时
 
 ${data.monthlyMetrics ? `月度指标:
@@ -810,13 +945,13 @@ ${Object.entries(data.monthlyMetrics)
     .join('\n')}
 ` : ''}
 
-请提供以下内容:
-1. 销售业绩分析：分析主播的销售表现、产品类别分布情况和销售效率
-2. 优势与劣势分析：基于数据点出主播的优势和需要改进的地方
-3. 具体的改进建议：针对销售和表现给出3-5点可操作的建议
-4. 简短总结：用一句话总结主播销售状况和最重要的改进建议
+作为20年资深高级直播运营专家，请你基于这些数据，对该主播进行全面分析:
+1. 销售绩效评估：分析主播的销售表现和各品牌销售分布情况
+2. 优势与不足：根据数据指出主播的核心优势和需要改进的方面
+3. 改进建议：给出3-5条具体、可操作的建议，帮助主播提升销售业绩
+4. 总结：用一段话总结分析结果和关键建议
 
-请使用Markdown格式回答，并保持专业、客观的分析语调。请将简短总结单独放在response.summary字段，详细分析放在response.analysis字段。`
+请使用专业的运营分析语言，给出深入的见解和建议。请将简短总结单独放在response.summary字段，详细分析放在response.analysis字段。`
     };
 }
 
@@ -837,12 +972,24 @@ async function callAIAPI(prompt) {
             messages: [
                 {
                     role: "system",
-                    content: "你是一位专业的直播电商分析师，擅长分析主播的销售业绩和直播表现。请提供专业、客观的分析和建议。"
+                    content: "你是一位拥有20年资深经验的高级直播运营专家，擅长分析主播的销售业绩、直播表现和运营策略。你的分析深入专业，建议具有可操作性和针对性。请基于数据提供准确、专业的分析和实用建议。"
                 },
                 prompt
             ],
-            response_format: { type: "json_object" }
+            temperature: 0.7,
+            max_tokens: 2000
         };
+        
+        // 根据模型决定是否添加response_format
+        if (modelName.includes('gpt') || modelName.includes('claude')) {
+            requestBody.response_format = { type: "json_object" };
+        }
+        
+        console.log('发送AI请求:', {
+            url: aiSettings.apiUrl,
+            model: modelName,
+            promptLength: prompt.content.length
+        });
         
         // 发送请求
         const response = await fetch(aiSettings.apiUrl, {
@@ -856,12 +1003,20 @@ async function callAIAPI(prompt) {
         
         // 检查响应
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`API错误: ${errorData.error?.message || response.statusText}`);
+            let errorMessage = `HTTP错误 ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = `API错误: ${errorData.error?.message || response.statusText}`;
+                console.error('API错误响应:', errorData);
+            } catch (e) {
+                console.error('无法解析错误响应:', e);
+            }
+            throw new Error(errorMessage);
         }
         
         // 解析响应
         const result = await response.json();
+        console.log('AI响应结果:', result);
         
         // 提取AI回复内容
         const content = result.choices?.[0]?.message?.content;
@@ -873,9 +1028,15 @@ async function callAIAPI(prompt) {
         try {
             return JSON.parse(content);
         } catch (e) {
-            // 如果无法解析为JSON，则使用文本内容
+            console.warn('无法解析AI返回的JSON数据:', e);
+            
+            // 尝试提取summary和analysis
+            const summaryMatch = content.match(/summary:\s*(.*?)(?=\n|$)/i);
+            const summary = summaryMatch ? summaryMatch[1] : '无法提取摘要';
+            
+            // 如果无法解析为JSON，处理为纯文本内容
             return {
-                summary: '无法解析AI返回的JSON数据',
+                summary: summary,
                 analysis: content
             };
         }
