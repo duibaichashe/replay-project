@@ -2237,70 +2237,11 @@ function createProductCategoryCharts() {
         return;
     }
     
-    // 为图表创建一个新行
-    const analysisTab = document.getElementById('analysis');
-    if (!analysisTab) return;
-    
-    const cardBody = analysisTab.querySelector('.card-body');
-    if (!cardBody) return;
-    
-    // 查找是否已存在这个图表行
-    let chartRow = document.getElementById('product-category-charts-row');
-    if (!chartRow) {
-        chartRow = document.createElement('div');
-        chartRow.id = 'product-category-charts-row';
-        chartRow.className = 'row mt-4';
-        
-        // 创建图表卡片容器
-        const pieChartCol = document.createElement('div');
-        pieChartCol.className = 'col-md-12 mb-4';
-        
-        const pieChartCard = document.createElement('div');
-        pieChartCard.className = 'card shadow-sm border-0';
-        
-        const pieChartCardHeader = document.createElement('div');
-        pieChartCardHeader.className = 'card-header bg-gradient-primary text-white py-3';
-        pieChartCardHeader.innerHTML = '<h5 class="mb-0 fw-bold"><i class="bi bi-pie-chart-fill me-2"></i>商品类别销售额分布</h5>';
-        
-        const pieChartCardBody = document.createElement('div');
-        pieChartCardBody.className = 'card-body';
-        
-        // 创建图表容器的行列结构
-        const chartContainerRow = document.createElement('div');
-        chartContainerRow.className = 'row';
-        
-        // 左侧饼图
-        const pieChartColLeft = document.createElement('div');
-        pieChartColLeft.className = 'col-md-6';
-        
-        const pieChartContainer = document.createElement('div');
-        pieChartContainer.className = 'chart-container';
-        pieChartContainer.style.position = 'relative';
-        pieChartContainer.style.height = '350px';
-        
-        // 创建canvas元素
-        const pieChartCanvas = document.createElement('canvas');
-        pieChartCanvas.id = 'product-category-pie-chart';
-        
-        // 右侧统计和信息
-        const statsColRight = document.createElement('div');
-        statsColRight.className = 'col-md-6';
-        statsColRight.id = 'product-category-stats';
-        
-        // 组合元素
-        pieChartContainer.appendChild(pieChartCanvas);
-        pieChartColLeft.appendChild(pieChartContainer);
-        chartContainerRow.appendChild(pieChartColLeft);
-        chartContainerRow.appendChild(statsColRight);
-        
-        pieChartCardBody.appendChild(chartContainerRow);
-        pieChartCard.appendChild(pieChartCardHeader);
-        pieChartCard.appendChild(pieChartCardBody);
-        pieChartCol.appendChild(pieChartCard);
-        chartRow.appendChild(pieChartCol);
-        
-        // 添加到分析选项卡
-        cardBody.appendChild(chartRow);
+    // 使用页面上已存在的元素，而不是动态创建新元素
+    const pieChartCanvas = document.getElementById('product-category-pie-chart');
+    if (!pieChartCanvas) {
+        console.error("找不到商品类别饼图的Canvas元素");
+        return;
     }
     
     // 计算总销售额
@@ -2334,13 +2275,6 @@ function createProductCategoryCharts() {
     // 如果已存在图表实例，先销毁它
     if (window.productCategoryPieChart) {
         window.productCategoryPieChart.destroy();
-    }
-    
-    // 获取Canvas上下文
-    const pieChartCanvas = document.getElementById('product-category-pie-chart');
-    if (!pieChartCanvas) {
-        console.error("找不到商品类别饼图的Canvas元素");
-        return;
     }
     
     const pieCtx = pieChartCanvas.getContext('2d');
@@ -2407,22 +2341,14 @@ function createProductCategoryCharts() {
                 
                 ctx.restore();
                 
-                // 绘制中心文本 - 总销售额
-                const fontSize = (height / 200).toFixed(2) * 16;
-                ctx.font = `bold ${fontSize}px 'Segoe UI', sans-serif`;
-                ctx.textBaseline = 'middle';
-                ctx.textAlign = 'center';
+                // 计算中心圆的半径（基于cutout百分比）
+                const centerRadius = Math.min(width, height) * 0.65 * 0.5; // cutout是65%
                 
-                // 总计文本
-                ctx.fillStyle = '#666';
-                const totalText = '总销售额';
-                ctx.fillText(totalText, width / 2, height / 2 - fontSize * 0.6);
-                
-                // 总额
-                ctx.fillStyle = '#4e73df';
-                ctx.font = `bold ${fontSize * 1.5}px 'Segoe UI', sans-serif`;
-                const formattedTotal = `¥${totalSales.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-                ctx.fillText(formattedTotal, width / 2, height / 2 + fontSize * 0.8);
+                // 清空中心区域（创建纯白色背景）
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(width / 2, height / 2, centerRadius, 0, Math.PI * 2);
+                ctx.fill();
                 
                 ctx.save();
             }
