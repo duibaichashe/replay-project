@@ -159,66 +159,48 @@ function handleDragLeave(e) {
     this.classList.remove('dragover');
 }
 
-// 处理文件拖放
-function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    this.classList.remove('dragover');
+// 添加处理文件选择的函数
+function handleFileSelection(dropZone, file) {
+    console.log(`处理文件选择: ${file.name}, 拖放区域ID: ${dropZone.id}`);
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-        const file = files[0];
-        console.log(`拖放文件: ${file.name}`);
+    // 获取文件类型
+    const fileType = dropZone.dataset.type;
+    if (!fileType) {
+        console.error('未找到上传区域类型标记');
+        return;
+    }
+    
+    // 获取文件信息容器
+    const fileInfoId = fileType === 'sales' ? 'sales-file-info' : 'schedule-file-info';
+    const fileInfo = document.getElementById(fileInfoId);
+    
+    if (fileInfo) {
+        // 找到文件详情元素
+        const fileDetails = fileInfo.querySelector('.file-details');
+        const fileNameElem = fileInfo.querySelector('.file-name');
+        const fileSizeElem = fileInfo.querySelector('.file-size');
         
-        // 确定文件信息容器
-        const type = this.dataset.type;
-        if (!type) {
-            console.error('未找到上传区域类型标记');
-            return;
-        }
+        // 更新文件信息显示
+        if (fileNameElem) fileNameElem.textContent = file.name;
+        if (fileSizeElem) fileSizeElem.textContent = formatFileSize(file.size);
         
-        console.log(`文件类型: ${type}, 区域ID: ${this.id}, 数据属性:`, this.dataset);
-        
-        const fileInfoId = type === 'sales' ? 'sales-file-info' : 'schedule-file-info';
-        const fileInfo = document.getElementById(fileInfoId);
-        
-        if (fileInfo) {
-            console.log(`找到文件信息容器: #${fileInfoId}`);
-            // 找到文件详情元素
-            const fileDetails = fileInfo.querySelector('.file-details');
-            const fileNameElem = fileInfo.querySelector('.file-name');
-            const fileSizeElem = fileInfo.querySelector('.file-size');
-            
-            console.log(`文件详情元素: ${fileDetails ? '找到' : '未找到'}`);
-            console.log(`文件名元素: ${fileNameElem ? '找到' : '未找到'}`);
-            console.log(`文件大小元素: ${fileSizeElem ? '找到' : '未找到'}`);
-            
-            // 更新文件信息显示
-            if (fileNameElem) fileNameElem.textContent = file.name;
-            if (fileSizeElem) fileSizeElem.textContent = formatFileSize(file.size);
-            
-            // 显示文件详情区域
-            if (fileDetails) fileDetails.classList.remove('d-none');
-        } else {
-            console.error(`未找到文件信息容器: #${fileInfoId}`);
-        }
-        
-        // 检查是否是Excel文件
-        const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-        console.log(`文件是否为Excel: ${isExcel}`);
-        
-        // 更新状态显示
-        const statusId = this.dataset.status;
-        console.log(`状态ID: ${statusId}`);
-        
-        if (isExcel) {
-            processUploadedFile(file, type);
-        } else {
-            document.getElementById(statusId).innerHTML = 
-                `<div class="alert alert-danger">请上传Excel文件 (.xlsx 或 .xls)</div>`;
-        }
+        // 显示文件详情区域
+        if (fileDetails) fileDetails.classList.remove('d-none');
     } else {
-        console.warn('没有接收到文件');
+        console.error(`未找到文件信息容器: #${fileInfoId}`);
+    }
+    
+    // 检查是否是Excel文件
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+    
+    // 更新状态显示
+    const statusId = dropZone.dataset.status;
+    
+    if (isExcel) {
+        processUploadedFile(file, fileType);
+    } else {
+        document.getElementById(statusId).innerHTML = 
+            `<div class="alert alert-danger">请上传Excel文件 (.xlsx 或 .xls)</div>`;
     }
 }
 
@@ -4085,4 +4067,67 @@ function calculateAnchorWorkHours(anchorName) {
     
     console.log(`主播 ${anchorName} 总工作时长: ${totalHours}小时`);
     return totalHours > 0 ? `${totalHours}h` : '-';
+}
+
+// 处理文件拖放
+function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.classList.remove('dragover');
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        console.log(`拖放文件: ${file.name}`);
+        
+        // 确定文件信息容器
+        const type = this.dataset.type;
+        if (!type) {
+            console.error('未找到上传区域类型标记');
+            return;
+        }
+        
+        console.log(`文件类型: ${type}, 区域ID: ${this.id}, 数据属性:`, this.dataset);
+        
+        const fileInfoId = type === 'sales' ? 'sales-file-info' : 'schedule-file-info';
+        const fileInfo = document.getElementById(fileInfoId);
+        
+        if (fileInfo) {
+            console.log(`找到文件信息容器: #${fileInfoId}`);
+            // 找到文件详情元素
+            const fileDetails = fileInfo.querySelector('.file-details');
+            const fileNameElem = fileInfo.querySelector('.file-name');
+            const fileSizeElem = fileInfo.querySelector('.file-size');
+            
+            console.log(`文件详情元素: ${fileDetails ? '找到' : '未找到'}`);
+            console.log(`文件名元素: ${fileNameElem ? '找到' : '未找到'}`);
+            console.log(`文件大小元素: ${fileSizeElem ? '找到' : '未找到'}`);
+            
+            // 更新文件信息显示
+            if (fileNameElem) fileNameElem.textContent = file.name;
+            if (fileSizeElem) fileSizeElem.textContent = formatFileSize(file.size);
+            
+            // 显示文件详情区域
+            if (fileDetails) fileDetails.classList.remove('d-none');
+        } else {
+            console.error(`未找到文件信息容器: #${fileInfoId}`);
+        }
+        
+        // 检查是否是Excel文件
+        const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+        console.log(`文件是否为Excel: ${isExcel}`);
+        
+        // 更新状态显示
+        const statusId = this.dataset.status;
+        console.log(`状态ID: ${statusId}`);
+        
+        if (isExcel) {
+            processUploadedFile(file, type);
+        } else {
+            document.getElementById(statusId).innerHTML = 
+                `<div class="alert alert-danger">请上传Excel文件 (.xlsx 或 .xls)</div>`;
+        }
+    } else {
+        console.warn('没有接收到文件');
+    }
 }
