@@ -227,11 +227,11 @@ async function testAPIConnection() {
  * 绑定AI分析按钮事件
  */
 function bindAIAnalysisEvents() {
-    // 开始分析按钮(两个位置的按钮)
-    const analysisButtons = document.querySelectorAll('#run-ai-analysis, #start-ai-analysis-btn');
-    analysisButtons.forEach(button => {
-        button.addEventListener('click', startAIAnalysis);
-    });
+    // 只保留下方的开始AI分析按钮，移除右上角的按钮
+    const startAnalysisBtn = document.getElementById('start-ai-analysis-btn');
+    if (startAnalysisBtn) {
+        startAnalysisBtn.addEventListener('click', startAIAnalysis);
+    }
     
     // 导出分析结果按钮
     const exportButton = document.getElementById('export-ai-analysis-btn');
@@ -269,14 +269,8 @@ async function startAIAnalysis() {
     try {
         console.log('开始AI分析...');
         
-        // 检查是否有分析数据
-        if (!window.analysisResults || !window.productCategoryAnalysis) {
-            showNotice('warning', '请先上传数据并完成基础分析');
-            return;
-        }
-        
         // 显示加载提示
-        showLoading('正在进行AI分析...');
+        showLoading('正在准备AI分析...');
         
         // 准备要分析的主播数据
         const anchorData = prepareAnchorDataForAI();
@@ -284,52 +278,89 @@ async function startAIAnalysis() {
         // 确认是否有数据可分析
         if (Object.keys(anchorData).length === 0) {
             hideLoading();
-            showNotice('warning', '没有找到可分析的主播数据');
+            showNotice('warning', '请先进行基础数据分析，以便提取主播销售数据');
             return;
         }
         
-        // 更新UI，显示正在分析中
-        updateAIAnalysisUI('loading');
-        
-        let results = {};
-        
-        // 根据模式选择AI分析方法
-        if (aiSettings.useDemoMode) {
-            // 演示模式使用本地模拟数据
-            console.log('使用演示模式进行AI分析');
-            results = await performDemoAIAnalysis(anchorData);
-        } else {
-            // 真实模式调用AI API
-            console.log('调用AI API进行分析');
-            results = await performRealAIAnalysis(anchorData);
+        // 确保aiAnalysisResults已初始化
+        if (!aiAnalysisResults) {
+            aiAnalysisResults = {};
         }
         
-        // 保存分析结果
-        aiAnalysisResults = results;
+        // 检查是否有已分析过的主播，如果有则排除已分析过的主播
+        const analyzedAnchors = Object.keys(aiAnalysisResults);
+        console.log('已分析的主播:', analyzedAnchors);
         
-        // 更新UI显示结果
-        updateAIAnalysisUI('results', results);
+        // 过滤掉已分析的主播
+        const remainingAnchors = {};
+        Object.entries(anchorData).forEach(([name, data]) => {
+            if (!analyzedAnchors.includes(name)) {
+                remainingAnchors[name] = data;
+            }
+        });
         
-        // 隐藏加载提示
-        hideLoading();
+        const totalRemaining = Object.keys(remainingAnchors).length;
+        const totalAnchors = Object.keys(anchorData).length;
         
-        // 显示成功消息
-        showNotice('success', 'AI分析完成！点击"查看详情"查看完整点评');
+        console.log(`分析进度: 已分析 ${analyzedAnchors.length}/${totalAnchors} 位主播，剩余 ${totalRemaining} 位`);
         
-        // 切换到AI分析标签页
-        const aiTab = document.getElementById('ai-analysis-tab');
-        if (aiTab) {
-            const tab = new bootstrap.Tab(aiTab);
-            tab.show();
+        // 如果所有主播都已分析完毕，显示全部结果
+        if (totalRemaining === 0) {
+            hideLoading();
+            showNotice('success', '所有主播已分析完毕');
+            
+            // 使用应急方法显示分析结果
+            const lastAnalyzedAnchor = analyzedAnchors[analyzedAnchors.length - 1];
+            if (lastAnalyzedAnchor && aiAnalysisResults[lastAnalyzedAnchor]) {
+                displayAnalysisResult(aiAnalysisResults[lastAnalyzedAnchor]);
+            }
+            return;
+        }
+        
+        try {
+            // 取第一个未分析的主播 - 仅分析一个
+            const nextAnchorName = Object.keys(remainingAnchors)[0];
+            const nextAnchorData = {
+                [nextAnchorName]: remainingAnchors[nextAnchorName]
+            };
+            
+            console.log(`准备分析下一个主播: ${nextAnchorName}`);
+            
+            let results;
+            
+            // 根据模式选择AI分析方法
+            if (aiSettings.useDemoMode) {
+                // 演示模式使用本地模拟数据
+                console.log('使用演示模式进行AI分析');
+                results = await performDemoAIAnalysis(nextAnchorData);
+            } else {
+                // 真实模式调用AI API
+                console.log('使用真实API模式进行AI分析');
+                results = await performRealAIAnalysis(nextAnchorData);
+            }
+            
+            // 将新分析结果合并到全局结果中
+            aiAnalysisResults = { ...aiAnalysisResults, ...results };
+            console.log('更新全局分析结果:', Object.keys(aiAnalysisResults));
+            
+            // 显示成功消息 - 虽然在上面的方法中也显示，这里再确保一下
+            if (results && Object.keys(results).length > 0) {
+                showNotice('success', `已完成主播 ${nextAnchorName} 的分析`);
+            }
+            
+            // 确保隐藏加载提示
+            hideLoading();
+            
+        } catch (error) {
+            console.error('AI分析出错:', error);
+            hideLoading();
+            showNotice('danger', `AI分析失败: ${error.message}`);
         }
         
     } catch (error) {
-        console.error('AI分析出错:', error);
+        console.error('准备AI分析出错:', error);
         hideLoading();
-        showNotice('danger', `AI分析失败: ${error.message}`);
-        
-        // 更新UI显示错误
-        updateAIAnalysisUI('error', error);
+        showNotice('danger', `准备AI分析失败: ${error.message}`);
     }
 }
 
@@ -341,9 +372,14 @@ function prepareAnchorDataForAI() {
     
     try {
         console.log('开始准备主播数据...');
+        console.log('数据检查：', {
+            matchedResults: window.matchedResults ? window.matchedResults.length : '未加载',
+            anchorMonthlyMap: window.anchorMonthlyMap ? Object.keys(window.anchorMonthlyMap).length : '未加载',
+            productCategoryAnalysis: window.productCategoryAnalysis ? Object.keys(window.productCategoryAnalysis).length : '未加载'
+        });
         
-        // 按品牌分类统计每个主播的销售数据
-        if (window.matchedResults) {
+        // 优先使用matchedResults处理每个主播的销售数据
+        if (window.matchedResults && window.matchedResults.length > 0) {
             // 首先按主播分组所有订单
             const anchorOrderMap = {};
             
@@ -453,6 +489,93 @@ function prepareAnchorDataForAI() {
                     });
                 }
             });
+        } 
+        // 如果没有matchedResults但是有productCategoryAnalysis，使用备选方法
+        else if (window.productCategoryAnalysis) {
+            console.log('使用productCategoryAnalysis数据作为备选');
+            
+            Object.entries(window.productCategoryAnalysis).forEach(([anchorName, categoryData]) => {
+                // 排除非对象数据
+                if (typeof categoryData !== 'object' || categoryData === null) return;
+                
+                // 计算总销售额
+                let totalSales = 0;
+                
+                // 创建品牌统计数据
+                const brandStats = {
+                    源悦: { orders: 0, amount: 0 },
+                    莼悦: { orders: 0, amount: 0 },
+                    旺玥: { orders: 0, amount: 0 },
+                    皇家: { orders: 0, amount: 0 }
+                };
+                
+                // 提取各品牌销售额
+                if (categoryData['源悦']) {
+                    brandStats['源悦'].amount = parseFloat(categoryData['源悦']) || 0;
+                    totalSales += brandStats['源悦'].amount;
+                }
+                
+                if (categoryData['莼悦']) {
+                    brandStats['莼悦'].amount = parseFloat(categoryData['莼悦']) || 0;
+                    totalSales += brandStats['莼悦'].amount;
+                }
+                
+                if (categoryData['旺玥']) {
+                    brandStats['旺玥'].amount = parseFloat(categoryData['旺玥']) || 0;
+                    totalSales += brandStats['旺玥'].amount;
+                }
+                
+                if (categoryData['皇家']) {
+                    brandStats['皇家'].amount = parseFloat(categoryData['皇家']) || 0;
+                    totalSales += brandStats['皇家'].amount;
+                }
+                
+                // 假设订单数量，根据销售额估算
+                const estimatedOrders = Math.max(1, Math.round(totalSales / 1000));
+                
+                // 分配订单数量到各品牌
+                Object.keys(brandStats).forEach(brand => {
+                    if (brandStats[brand].amount > 0 && totalSales > 0) {
+                        brandStats[brand].orders = Math.max(1, Math.round((brandStats[brand].amount / totalSales) * estimatedOrders));
+                    }
+                });
+                
+                // 创建主播数据
+                anchorData[anchorName] = {
+                    name: anchorName,
+                    salesData: {
+                        totalSales: totalSales,
+                        totalOrders: estimatedOrders,
+                        brandStats: brandStats
+                    },
+                    orderCount: estimatedOrders,
+                    productCount: Object.values(brandStats).filter(b => b.amount > 0).length
+                };
+                
+                // 添加工作时长数据
+                if (typeof calculateAnchorWorkHours === 'function') {
+                    const workHours = calculateAnchorWorkHours(anchorName);
+                    if (workHours && workHours !== '-') {
+                        anchorData[anchorName].workHours = parseFloat(workHours);
+                    }
+                }
+                
+                // 如果有主播月度资料数据，添加到分析数据中
+                if (window.anchorMonthlyMap && window.anchorMonthlyMap[anchorName]) {
+                    const monthlyData = window.anchorMonthlyMap[anchorName];
+                    
+                    // 添加月度指标
+                    anchorData[anchorName].monthlyMetrics = {};
+                    
+                    // 复制所有数据
+                    Object.entries(monthlyData).forEach(([key, value]) => {
+                        // 排除复杂对象和函数
+                        if (typeof value !== 'object' && typeof value !== 'function') {
+                            anchorData[anchorName].monthlyMetrics[key] = value;
+                        }
+                    });
+                }
+            });
         }
         
         console.log('已准备主播数据用于AI分析:', Object.keys(anchorData).length, '位主播');
@@ -469,13 +592,28 @@ function prepareAnchorDataForAI() {
  * 演示模式 - 模拟AI分析
  */
 async function performDemoAIAnalysis(anchorData) {
-    // 模拟网络延迟，让用户感觉到这是一个真实的AI处理过程
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const results = {};
-    
-    // 为每个主播动态生成分析结果
-    Object.entries(anchorData).forEach(([anchorName, data]) => {
+    try {
+        console.log('使用演示模式进行AI分析');
+        
+        // 模拟网络延迟，让用户感觉到这是一个真实的AI处理过程
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // 创建结果对象
+        const results = {};
+        
+        // 获取要分析的第一个主播
+        const anchorEntries = Object.entries(anchorData);
+        if (anchorEntries.length === 0) {
+            hideLoading();
+            showNotice('warning', '没有找到可分析的主播数据');
+            return results;
+        }
+        
+        // 获取第一个要分析的主播
+        const [anchorName, data] = anchorEntries[0];
+        console.log(`演示模式分析主播: ${anchorName}`);
+        showNotice('info', `正在分析主播: ${anchorName} (演示模式)`);
+        
         // 调用通用的AI分析引擎来生成结果
         const analysisResult = generateDynamicAnalysis(anchorName, data);
         
@@ -487,9 +625,27 @@ async function performDemoAIAnalysis(anchorData) {
             data: data,
             timestamp: new Date().toISOString()
         };
-    });
-    
-    return results;
+        
+        // 输出分析结果到控制台
+        console.log(`主播 ${anchorName} 分析完成(演示模式):`, results[anchorName]);
+        
+        // 显示完成通知
+        showNotice('success', `已完成主播 ${anchorName} 的分析（演示模式）`);
+        
+        // 强制直接显示结果到DOM
+        displayAnalysisResult(results[anchorName]);
+        
+        // 隐藏加载提示
+        hideLoading();
+        
+        return results;
+        
+    } catch (error) {
+        console.error('演示模式分析出错:', error);
+        hideLoading();
+        showNotice('warning', `演示模式分析出错: ${error.message}`);
+        return {};
+    }
 }
 
 /**
@@ -882,19 +1038,30 @@ async function performRealAIAnalysis(anchorData) {
             throw new Error('未配置AI API接口信息，请先在设置中配置API');
         }
         
+        // 创建结果对象
         const results = {};
         
-        // 为了避免一次发送过多数据，我们按主播逐个分析
-        for (const [anchorName, data] of Object.entries(anchorData)) {
-            console.log(`正在分析主播: ${anchorName}`);
-            
+        // 获取要分析的第一个主播
+        const anchorEntries = Object.entries(anchorData);
+        if (anchorEntries.length === 0) {
+            hideLoading();
+            showNotice('warning', '没有找到可分析的主播数据');
+            return results;
+        }
+        
+        // 获取第一个要分析的主播
+        const [anchorName, data] = anchorEntries[0];
+        console.log(`正在分析主播: ${anchorName}`);
+        showNotice('info', `正在分析主播: ${anchorName}`);
+        
+        try {
             // 构建提示信息
             const prompt = generateAIPrompt(anchorName, data);
             
             // 调用API
             const aiResult = await callAIAPI(prompt);
             
-            // 处理结果
+            // 处理主播结果
             results[anchorName] = {
                 name: anchorName,
                 summary: aiResult.summary || '无法生成摘要',
@@ -903,56 +1070,281 @@ async function performRealAIAnalysis(anchorData) {
                 timestamp: new Date().toISOString()
             };
             
-            // 模拟一些延迟以避免API速率限制
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // 输出分析结果到控制台
+            console.log(`主播 ${anchorName} 分析完成:`, results[anchorName]);
+            
+            // 显示完成通知
+            showNotice('success', `已完成主播 ${anchorName} 的分析`);
+            
+            // 强制直接显示结果到DOM
+            displayAnalysisResult(results[anchorName]);
+            
+            // 隐藏加载提示
+            hideLoading();
+            
+        } catch (error) {
+            console.error(`分析主播 ${anchorName} 时出错:`, error);
+            showNotice('warning', `分析主播 ${anchorName} 时出错: ${error.message}`);
+            
+            // 记录错误但仍显示
+            results[anchorName] = {
+                name: anchorName,
+                summary: `分析出错: ${error.message}`,
+                analysis: `无法完成分析，发生错误: ${error.message}`,
+                data: data,
+                timestamp: new Date().toISOString(),
+                error: true
+            };
+            
+            // 强制显示错误结果
+            displayAnalysisResult(results[anchorName]);
+            hideLoading();
         }
         
         return results;
+        
     } catch (error) {
         console.error('调用AI API进行分析时出错:', error);
+        hideLoading();
         throw error;
     }
 }
 
 /**
- * 生成发送给AI的提示信息
+ * 直接在页面显示分析结果（应急方法）
  */
-function generateAIPrompt(anchorName, data) {
-    // 格式化品牌销售数据
-    const brandSummaries = [];
-    for (const [brand, stats] of Object.entries(data.salesData.brandStats)) {
-        if (stats.orders > 0) {
-            brandSummaries.push(`${brand}销售${stats.orders}单，销售额${stats.amount.toLocaleString('zh-CN')}元`);
+function displayAnalysisResult(result) {
+    console.log('使用应急方法显示分析结果');
+    
+    // 先尝试获取现有容器
+    let container = document.getElementById('ai-analysis-container');
+    
+    // 如果找不到容器，尝试找到父元素并创建容器
+    if (!container) {
+        console.log('找不到ai-analysis-container，尝试在页面中创建');
+        
+        // 尝试找到内容区域
+        let contentArea = document.querySelector('.tab-content') || 
+                          document.querySelector('.content-area') || 
+                          document.querySelector('.main-content');
+        
+        if (!contentArea) {
+            console.log('找不到合适的父容器，直接在body中创建');
+            contentArea = document.body;
         }
+        
+        // 创建容器
+        container = document.createElement('div');
+        container.id = 'ai-analysis-container';
+        container.className = 'ai-analysis-section mt-4 p-3 border rounded';
+        contentArea.appendChild(container);
+        console.log('已创建AI分析容器');
     }
     
-    return {
-        role: "user",
-        content: `你现在是一个20年资深高级直播运营，请基于以下数据，对主播进行专业分析，提供改进建议。
+    // 清空容器
+    container.innerHTML = '';
+    
+    // 创建结果HTML
+    const resultHtml = `
+        <div class="analysis-result p-3">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>主播"${result.name}"的AI分析结果</h4>
+                <button id="next-anchor-analysis-btn" class="btn btn-sm btn-primary">
+                    分析下一位主播
+                </button>
+            </div>
+            
+            <div class="alert alert-info mb-3">
+                <h5>分析摘要</h5>
+                <p>${result.summary}</p>
+            </div>
+            
+            <div class="card mb-3">
+                <div class="card-header">详细分析</div>
+                <div class="card-body analysis-content">
+                    ${renderMarkdown(result.analysis)}
+                </div>
+            </div>
+            
+            <div class="text-muted mb-3">
+                <small>分析时间: ${new Date(result.timestamp).toLocaleString('zh-CN')}</small>
+            </div>
+        </div>
+    `;
+    
+    // 添加到容器
+    container.innerHTML = resultHtml;
+    
+    // 确保容器在页面上可见
+    container.style.display = 'block';
+    if (container.classList.contains('d-none')) {
+        container.classList.remove('d-none');
+    }
+    
+    // 尝试找到对应的标签页，激活它
+    try {
+        const tabElement = document.querySelector('[data-bs-target="#ai-analysis-container"]') ||
+                          document.querySelector('[href="#ai-analysis-container"]') ||
+                          document.getElementById('ai-analysis-tab');
         
-主播名称: ${anchorName}
+        if (tabElement && typeof bootstrap !== 'undefined') {
+            const tab = new bootstrap.Tab(tabElement);
+            tab.show();
+            console.log('已激活AI分析标签页');
+        }
+    } catch (error) {
+        console.warn('无法激活AI分析标签页:', error);
+    }
+    
+    // 绑定"分析下一位主播"按钮的事件
+    const nextButton = document.getElementById('next-anchor-analysis-btn');
+    if (nextButton) {
+        nextButton.addEventListener('click', function() {
+            console.log('用户请求分析下一位主播');
+            startAIAnalysis();
+        });
+    }
+}
 
-销售数据概况:
-- 总销售额: ${data.salesData.totalSales.toLocaleString('zh-CN')}元
-- 总订单数: ${data.salesData.totalOrders}单
-- 按品牌分类: ${brandSummaries.join('，')}
-- 销售产品种类数: ${data.productCount || '未知'}种
-- 直播时长: ${data.workHours || '未知'}小时
+/**
+ * 显示单个主播分析结果
+ */
+function showSingleAnchorResult(result) {
+    // 获取AI分析容器
+    const container = document.getElementById('ai-analysis-container');
+    if (!container) {
+        console.error('找不到AI分析容器，无法显示结果');
+        return;
+    }
+    
+    // 清空现有内容
+    container.innerHTML = '';
+    
+    // 创建单个主播分析结果的UI
+    const resultHtml = `
+        <div class="single-result-container p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4>主播"${result.name}"的AI分析结果</h4>
+                <button id="next-anchor-btn" class="btn btn-primary">
+                    分析下一位主播
+                </button>
+            </div>
+            
+            <div class="alert alert-info mb-4">
+                <h5>分析摘要</h5>
+                <p>${result.summary}</p>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <strong>详细分析</strong>
+                </div>
+                <div class="card-body">
+                    <div class="analysis-content">
+                        ${renderMarkdown(result.analysis)}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-muted mt-2">
+                <small>分析时间: ${new Date(result.timestamp).toLocaleString('zh-CN')}</small>
+            </div>
+        </div>
+    `;
+    
+    // 添加到容器
+    container.innerHTML = resultHtml;
+    
+    // 绑定下一位主播按钮事件
+    const nextButton = document.getElementById('next-anchor-btn');
+    if (nextButton) {
+        nextButton.addEventListener('click', function() {
+            console.log('用户请求分析下一位主播');
+            startAIAnalysis();
+        });
+    }
+}
 
-${data.monthlyMetrics ? `月度指标:
-${Object.entries(data.monthlyMetrics)
-    .map(([key, value]) => `- ${key}: ${value}`)
-    .join('\n')}
-` : ''}
-
-作为20年资深高级直播运营专家，请你基于这些数据，对该主播进行全面分析:
-1. 销售绩效评估：分析主播的销售表现和各品牌销售分布情况
-2. 优势与不足：根据数据指出主播的核心优势和需要改进的方面
-3. 改进建议：给出3-5条具体、可操作的建议，帮助主播提升销售业绩
-4. 总结：用一段话总结分析结果和关键建议
-
-请使用专业的运营分析语言，给出深入的见解和建议。请将简短总结单独放在response.summary字段，详细分析放在response.analysis字段。`
+/**
+ * 生成AI提示
+ */
+function generateAIPrompt(anchorName, data) {
+    // 提取必要的数据
+    const { salesData, orderCount, productCount, workHours, monthlyMetrics } = data;
+    const { totalSales, totalOrders, brandStats } = salesData || {};
+    
+    // 确保数据格式化
+    const formattedSales = totalSales ? totalSales.toFixed(2) : 0;
+    const formattedWorkHours = workHours || 0;
+    
+    // 构建提示内容
+    let promptContent = `请对主播"${anchorName}"的销售表现进行专业分析并提供改进建议。\n\n`;
+    
+    // 添加销售数据
+    promptContent += "### 销售数据摘要\n";
+    promptContent += `- 总销售额: ¥${formattedSales}\n`;
+    promptContent += `- 总订单数: ${totalOrders || 0}\n`;
+    promptContent += `- 产品种类数: ${productCount || 0}\n`;
+    promptContent += `- 直播工时: ${formattedWorkHours}小时\n\n`;
+    
+    // 添加品牌销售数据
+    promptContent += "### 品牌销售情况\n";
+    if (brandStats) {
+        Object.entries(brandStats).forEach(([brand, stats]) => {
+            if (stats.amount > 0 || stats.orders > 0) {
+                promptContent += `- ${brand}: ¥${stats.amount.toFixed(2)}, ${stats.orders}个订单\n`;
+            }
+        });
+    }
+    promptContent += "\n";
+    
+    // 如果有月度指标数据，添加到提示
+    if (monthlyMetrics && Object.keys(monthlyMetrics).length > 0) {
+        promptContent += "### 主播月度指标\n";
+        
+        if (monthlyMetrics.fans) promptContent += `- 粉丝数: ${monthlyMetrics.fans}\n`;
+        if (monthlyMetrics.conversionRate) promptContent += `- 转化率: ${monthlyMetrics.conversionRate}%\n`;
+        if (monthlyMetrics.averageViewers) promptContent += `- 平均观看人数: ${monthlyMetrics.averageViewers}\n`;
+        if (monthlyMetrics.totalLiveHours) promptContent += `- 月直播时长: ${monthlyMetrics.totalLiveHours}小时\n`;
+        if (monthlyMetrics.averageOrderValue) promptContent += `- 客单价: ¥${monthlyMetrics.averageOrderValue}\n`;
+        if (monthlyMetrics.giftValue) promptContent += `- 礼物收入: ¥${monthlyMetrics.giftValue}\n`;
+        if (monthlyMetrics.engagementRate) promptContent += `- 互动率: ${monthlyMetrics.engagementRate}%\n`;
+        if (monthlyMetrics.responseRate) promptContent += `- 响应率: ${monthlyMetrics.responseRate}%\n`;
+        
+        promptContent += "\n";
+    }
+    
+    // 添加分析指导和要求
+    promptContent += "### 分析要求\n";
+    promptContent += "1. 请对以上数据进行深入分析，评估该主播的销售表现\n";
+    promptContent += "2. 识别主播的优势和不足\n";
+    promptContent += "3. 提供专业的改进建议和可执行的策略\n";
+    promptContent += "4. 专注于如何提高销售额、转化率和客单价\n\n";
+    
+    // 明确要求返回JSON格式
+    promptContent += "### 返回格式要求（非常重要）\n";
+    promptContent += "必须严格按照以下JSON格式返回，不要添加任何其他内容，确保JSON格式有效：\n";
+    promptContent += "```json\n";
+    promptContent += "{\n";
+    promptContent += '  "summary": "一句话概括主播表现(50字以内)",\n';
+    promptContent += '  "analysis": "完整的分析内容，包括表现评估、优势、不足和改进建议，使用Markdown格式"\n';
+    promptContent += "}\n";
+    promptContent += "```\n";
+    promptContent += "注意：返回的必须是有效的JSON格式，不要包含任何额外的标记或文本！返回内容必须可以直接通过JSON.parse()方法解析。\n";
+    
+    // 创建最终提示对象
+    const finalPrompt = {
+        role: "user",
+        content: promptContent
     };
+    
+    // 调试输出
+    console.log('生成的AI提示：', {
+        anchorName,
+        promptLength: promptContent.length
+    });
+    
+    return finalPrompt;
 }
 
 /**
@@ -980,11 +1372,33 @@ async function callAIAPI(prompt) {
             max_tokens: 2000
         };
         
-        // 根据模型决定是否添加response_format
-        if (modelName.includes('gpt') || modelName.includes('claude')) {
-            requestBody.response_format = { type: "json_object" };
+        // 根据模型决定是否添加response_format (仅对某些模型添加)
+        // 注意：只有部分GPT模型支持response_format，不要给Claude模型添加此参数
+        if (modelName.includes('gpt-4') || modelName.includes('gpt-3.5-turbo')) {
+            // 添加函数调用作为更安全的JSON返回选项
+            requestBody.functions = [{
+                name: "analysis_result",
+                description: "返回主播分析结果",
+                parameters: {
+                    type: "object",
+                    properties: {
+                        summary: {
+                            type: "string",
+                            description: "主播表现概述"
+                        },
+                        analysis: {
+                            type: "string",
+                            description: "详细分析内容"
+                        }
+                    },
+                    required: ["summary", "analysis"]
+                }
+            }];
+            requestBody.function_call = { name: "analysis_result" };
         }
         
+        // 输出完整请求体以便调试
+        console.log('完整API请求体:', JSON.stringify(requestBody, null, 2));
         console.log('发送AI请求:', {
             url: aiSettings.apiUrl,
             model: modelName,
@@ -1019,27 +1433,56 @@ async function callAIAPI(prompt) {
         console.log('AI响应结果:', result);
         
         // 提取AI回复内容
-        const content = result.choices?.[0]?.message?.content;
-        if (!content) {
-            throw new Error('API返回的数据格式不正确');
+        let content = result.choices?.[0]?.message?.content;
+        
+        // 检查是否是函数调用结果
+        if (result.choices?.[0]?.message?.function_call) {
+            try {
+                // 如果是函数调用，直接提取参数JSON
+                const functionCallArgs = result.choices[0].message.function_call.arguments;
+                console.log('函数调用参数:', functionCallArgs);
+                return JSON.parse(functionCallArgs);
+            } catch (e) {
+                console.warn('无法解析函数调用参数:', e);
+            }
         }
         
-        // 尝试解析JSON响应
-        try {
-            return JSON.parse(content);
-        } catch (e) {
-            console.warn('无法解析AI返回的JSON数据:', e);
-            
-            // 尝试提取summary和analysis
-            const summaryMatch = content.match(/summary:\s*(.*?)(?=\n|$)/i);
-            const summary = summaryMatch ? summaryMatch[1] : '无法提取摘要';
-            
-            // 如果无法解析为JSON，处理为纯文本内容
-            return {
-                summary: summary,
-                analysis: content
-            };
+        // 如果不是函数调用或解析失败，尝试直接处理content
+        if (content) {
+            // 尝试解析JSON响应 - 处理可能的格式问题
+            try {
+                // 有时API可能返回```json 包裹的内容，尝试提取
+                if (content.includes('```json')) {
+                    const match = content.match(/```json\s*([\s\S]*?)\s*```/);
+                    if (match && match[1]) {
+                        content = match[1].trim();
+                        console.log('从Markdown代码块提取的JSON:', content);
+                    }
+                }
+                
+                // 尝试解析JSON
+                return JSON.parse(content);
+            } catch (e) {
+                console.warn('无法解析AI返回的JSON数据，尝试其他格式:', e);
+                console.log('尝试解析的原始内容:', content);
+                
+                // 尝试提取summary和analysis
+                const summaryMatch = content.match(/summary[：:]\s*(.*?)(?=\n|$)/i);
+                const summary = summaryMatch ? summaryMatch[1].trim() : '无法提取摘要';
+                
+                // 如果无法解析为JSON，处理为纯文本内容
+                return {
+                    summary: summary,
+                    analysis: content
+                };
+            }
         }
+        
+        // 如果没有content字段，返回默认内容
+        return {
+            summary: "API返回的数据无法解析",
+            analysis: "无法从API响应中提取有效内容。请检查API设置并重试。"
+        };
     } catch (error) {
         console.error('调用AI API时出错:', error);
         throw error;
@@ -1052,7 +1495,12 @@ async function callAIAPI(prompt) {
 function updateAIAnalysisUI(state, data = null) {
     // 获取AI分析容器
     const container = document.getElementById('ai-analysis-container');
-    if (!container) return;
+    if (!container) {
+        console.error('找不到AI分析容器元素');
+        return;
+    }
+    
+    console.log(`更新AI分析UI状态: ${state}`, data ? Object.keys(data).length || data : '无数据');
     
     // 清空现有内容
     container.innerHTML = '';
@@ -1068,6 +1516,82 @@ function updateAIAnalysisUI(state, data = null) {
                     <p class="mt-3">正在进行AI分析，请稍候...</p>
                 </div>
             `;
+            break;
+            
+        case 'in-progress':
+            // 显示进行中状态，带有部分结果
+            const { current, total, results } = data || { current: 0, total: 0, results: {} };
+            const progressPercentage = total > 0 ? Math.round((current / total) * 100) : 0;
+            
+            let progressHtml = `
+                <div class="mb-4">
+                    <h4>主播AI分析进行中</h4>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>已完成分析 ${current}/${total} 位主播</span>
+                        <span>${progressPercentage}%</span>
+                    </div>
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                            role="progressbar" 
+                            style="width: ${progressPercentage}%" 
+                            aria-valuenow="${progressPercentage}" 
+                            aria-valuemin="0" 
+                            aria-valuemax="100">
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 如果有结果，显示当前结果
+            if (results && Object.keys(results).length > 0) {
+                progressHtml += `
+                    <div class="partial-results mb-4">
+                        <h5>已完成的分析结果</h5>
+                        <div class="row ai-analysis-cards">
+                `;
+                
+                Object.values(results).forEach(result => {
+                    progressHtml += `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card h-100 ${result.error ? 'border-warning' : ''}">
+                                <div class="card-header bg-light">
+                                    <strong>${result.name}</strong>
+                                </div>
+                                <div class="card-body">
+                                    <p>${result.summary}</p>
+                                    <button class="btn btn-sm btn-primary view-analysis-btn" 
+                                            data-anchor="${result.name}">
+                                        查看详细分析
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                progressHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = progressHtml;
+            
+            // 绑定详情查看按钮事件 - 使用事件委托
+            container.addEventListener('click', function(e) {
+                const target = e.target;
+                if (target.classList.contains('view-analysis-btn') || 
+                    target.closest('.view-analysis-btn')) {
+                    const button = target.classList.contains('view-analysis-btn') ? 
+                        target : target.closest('.view-analysis-btn');
+                    const anchorName = button.getAttribute('data-anchor');
+                    if (results && results[anchorName]) {
+                        console.log('查看主播分析详情:', anchorName);
+                        showAnalysisDetailsModal(results[anchorName]);
+                    }
+                }
+            });
+            
             break;
             
         case 'results':
@@ -1090,13 +1614,13 @@ function updateAIAnalysisUI(state, data = null) {
                 <div class="row ai-analysis-cards">
                     ${Object.values(data).map(result => `
                         <div class="col-md-6 col-lg-4 mb-4">
-                            <div class="card h-100">
+                            <div class="card h-100 ${result.error ? 'border-warning' : ''}">
                                 <div class="card-header bg-light">
                                     <strong>${result.name}</strong>
                                 </div>
                                 <div class="card-body">
                                     <p>${result.summary}</p>
-                                    <button class="btn btn-sm btn-primary view-analysis-details" 
+                                    <button class="btn btn-sm btn-primary view-analysis-btn" 
                                             data-anchor="${result.name}">
                                         查看详细分析
                                     </button>
@@ -1109,14 +1633,19 @@ function updateAIAnalysisUI(state, data = null) {
             
             container.innerHTML = resultsHtml;
             
-            // 绑定详情查看按钮事件
-            container.querySelectorAll('.view-analysis-details').forEach(button => {
-                button.addEventListener('click', function() {
-                    const anchorName = this.getAttribute('data-anchor');
+            // 绑定详情查看按钮事件 - 使用事件委托
+            container.addEventListener('click', function(e) {
+                const target = e.target;
+                if (target.classList.contains('view-analysis-btn') || 
+                    target.closest('.view-analysis-btn')) {
+                    const button = target.classList.contains('view-analysis-btn') ? 
+                        target : target.closest('.view-analysis-btn');
+                    const anchorName = button.getAttribute('data-anchor');
                     if (data[anchorName]) {
+                        console.log('查看主播分析详情:', anchorName);
                         showAnalysisDetailsModal(data[anchorName]);
                     }
-                });
+                }
             });
             
             // 绑定导出按钮事件

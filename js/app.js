@@ -120,6 +120,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 加载AI分析脚本
     loadScript('js/Ai_analysis.js');
+    
+    // 添加页面滚动功能
+    bindScrollEvents();
 });
 
 // 初始化拖放区域和文件选择按钮
@@ -640,7 +643,9 @@ function standardizeTimeSlot(timeStr) {
     return result;
 }
 
-// 开始分析
+/**
+ * 开始分析
+ */
 function startAnalysis() {
     console.log("开始分析...");
     
@@ -697,11 +702,39 @@ function startAnalysis() {
             
             // 显示成功消息
             showNotice("success", `分析完成！共处理 ${normalizedSales.length} 条销售记录，成功匹配 ${matchedResults.filter(r => r.matched).length} 条。`);
+            
+            // 自动滚动到结果区域
+            setTimeout(() => {
+                const tabContent = document.querySelector('.tab-content');
+                if (tabContent) {
+                    console.log('分析完成，滚动到结果区域');
+                    scrollToView(tabContent);
+                }
+            }, 300);
+            
         } catch (error) {
             console.error("分析过程中发生错误:", error);
             hideLoading();
             showNotice("danger", `分析失败: ${error.message || "未知错误"}`);
         }
+    });
+}
+
+/**
+ * 滚动到指定元素
+ * @param {Element} element 要滚动到的元素
+ */
+function scrollToView(element) {
+    if (!element) return;
+    
+    // 计算元素位置
+    const rect = element.getBoundingClientRect();
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // 滚动到元素位置
+    window.scrollTo({
+        top: scrollTop + rect.top - 50, // 上方留出50px的空间
+        behavior: 'smooth'
     });
 }
 
@@ -5449,5 +5482,118 @@ function loadScript(src) {
         script.onload = () => resolve();
         script.onerror = (e) => reject(e);
         document.head.appendChild(script);
+    });
+}
+
+/**
+ * 自动滚动到指定元素位置
+ * @param {string|Element} target 目标元素或选择器
+ * @param {number} offset 偏移量（默认向上偏移100px）
+ * @param {string} direction 滚动方向，'up'为向上滚动，'down'为向下滚动
+ */
+function scrollToElement(target, offset = 100, direction = 'down') {
+    let element = null;
+    
+    if (typeof target === 'string') {
+        element = document.querySelector(target);
+    } else if (target instanceof Element) {
+        element = target;
+    }
+    
+    if (!element) {
+        console.warn('滚动目标元素不存在:', target);
+        return;
+    }
+    
+    console.log(`尝试滚动到元素(${direction}):`, element);
+    
+    // 高亮元素以吸引注意力
+    const originalBackground = element.style.backgroundColor;
+    const originalTransition = element.style.transition;
+    
+    element.style.transition = 'background-color 0.5s ease';
+    element.style.backgroundColor = '#f0f8ff';
+    
+    // 获取元素位置
+    const rect = element.getBoundingClientRect();
+    const isInViewport = (
+        rect.top >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight)
+    );
+    
+    if (!isInViewport) {
+        // 向上滚动或向下滚动
+        if (direction === 'up') {
+            // 向上滚动 - 滚动到元素底部
+            window.scrollTo({
+                top: Math.max(0, window.pageYOffset - (window.innerHeight - rect.height) + offset),
+                behavior: 'smooth'
+            });
+        } else {
+            // 向下滚动 - 滚动到元素顶部
+            window.scrollTo({
+                top: element.offsetTop - offset,
+                behavior: 'smooth'
+            });
+        }
+    }
+    
+    // 滚动完成后恢复原背景
+    setTimeout(() => {
+        element.style.backgroundColor = originalBackground;
+        element.style.transition = originalTransition;
+    }, 1500);
+}
+
+/**
+ * 绑定所有分析按钮的滚动事件
+ */
+function bindScrollEvents() {
+    // 获取所有分析按钮
+    const analysisButtons = document.querySelectorAll('button[id$="-analysis"], button[id="analyze-btn"]');
+    
+    analysisButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            console.log('检测到分析按钮点击，将滚动页面', this.id);
+            
+            // 主分析按钮 - 向上滚动到结果区域
+            if (this.id === 'analyze-btn') {
+                // 设置延时，等待分析结果加载
+                setTimeout(() => {
+                    const resultSection = document.querySelector('.tab-content, #results-container, .analysis-section');
+                    if (resultSection) {
+                        scrollToElement(resultSection, 100, 'up');
+                    } else {
+                        // 尝试滚动到分析结果标签
+                        const resultTab = document.querySelector('#analysis-results-tab, .nav-tabs');
+                        if (resultTab) {
+                            scrollToElement(resultTab, 0, 'up');
+                        }
+                    }
+                }, 500);
+            } 
+            // AI分析按钮 - 向下滚动
+            else if (this.id.includes('ai-analysis')) {
+                setTimeout(() => {
+                    const aiContainer = document.getElementById('ai-analysis-container');
+                    if (aiContainer) {
+                        scrollToElement(aiContainer, 100, 'down');
+                    }
+                }, 1000);
+            }
+            // 其他分析按钮
+            else {
+                // 获取分析按钮对应的结果区域
+                const targetId = this.id.replace('开始', '').replace('-btn', '');
+                const resultsSection = document.querySelector(`#${targetId}-container, .${targetId}-section, #${targetId}-results`);
+                
+                if (resultsSection) {
+                    // 设置延时，等待分析结果加载
+                    setTimeout(() => {
+                        scrollToElement(resultsSection, 100, 'down');
+                    }, 500);
+                }
+            }
+        });
     });
 }
