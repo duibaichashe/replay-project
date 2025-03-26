@@ -2342,21 +2342,26 @@ function timeToMinutes(timeStr) {
 
 // 商品分类分析
 function analyzeProductCategories(results) {
-    console.log("开始商品分类分析...");
+    console.log("分析主播和商品类别的销售情况...");
     
-    // 创建分析结果对象
+    // 初始化数据结构
     productCategoryAnalysis = {};
     
-    // 遍历所有匹配结果
+    // 按主播和类别统计销售额
     results.forEach(result => {
-        if (!result.matched || !result.anchor) return; // 跳过未匹配的结果或无主播信息的结果
+        if (!result.matched || !result.anchor) return;
         
         const anchorName = result.anchor.trim();
         const saleInfo = extractSaleInfo(result.sale);
-        const productName = saleInfo.product || '';
         const price = parseFloat(saleInfo.price) || 0;
+        const product = saleInfo.product || '';
         
-        // 如果这个主播还没有数据，初始化
+        // 简单的商品分类判断
+        const isSourceProduct = product.includes('源悦');
+        const isChunProduct = product.includes('莼悦');
+        const isWangProduct = product.includes('旺玥');
+        const isRoyalProduct = product.includes('皇家');
+        
         if (!productCategoryAnalysis[anchorName]) {
             productCategoryAnalysis[anchorName] = {
                 '源悦': 0,
@@ -2366,25 +2371,118 @@ function analyzeProductCategories(results) {
             };
         }
         
-        // 根据商品名称分类
-        if (productName.includes('源悦')) {
-            productCategoryAnalysis[anchorName]['源悦'] += price;
-        } else if (productName.includes('莼悦')) {
-            productCategoryAnalysis[anchorName]['莼悦'] += price;
-        } else if (productName.includes('旺玥')) {
-            productCategoryAnalysis[anchorName]['旺玥'] += price;
-        } else if (productName.includes('皇家') && !productName.includes('旺玥') && !productName.includes('莼悦')) {
-            productCategoryAnalysis[anchorName]['皇家'] += price;
+        if (isSourceProduct) productCategoryAnalysis[anchorName]['源悦'] += price;
+        else if (isChunProduct) productCategoryAnalysis[anchorName]['莼悦'] += price;
+        else if (isWangProduct) productCategoryAnalysis[anchorName]['旺玥'] += price;
+        else if (isRoyalProduct) productCategoryAnalysis[anchorName]['皇家'] += price;
+        else {
+            // 通过品牌名称判断类别
+            let brand = saleInfo.brand || '';
+            if (brand.includes('源悦')) productCategoryAnalysis[anchorName]['源悦'] += price;
+            else if (brand.includes('莼悦')) productCategoryAnalysis[anchorName]['莼悦'] += price;
+            else if (brand.includes('旺玥')) productCategoryAnalysis[anchorName]['旺玥'] += price;
+            else if (brand.includes('皇家')) productCategoryAnalysis[anchorName]['皇家'] += price;
+            // 如果没有明确的类别，默认归为皇家类
+            else productCategoryAnalysis[anchorName]['皇家'] += price;
         }
     });
     
-    // 输出分析结果到控制台
-    console.log("商品分类分析结果:", productCategoryAnalysis);
+    console.log("商品类别分析结果:", productCategoryAnalysis);
     
-    // 在数据分析选项卡中显示结果
+    // 保存原始结果，用于筛选
+    window.originalProductCategoryAnalysis = JSON.parse(JSON.stringify(productCategoryAnalysis));
+    
+    // 显示分析结果
     displayProductCategoryAnalysis();
+}
+
+// 根据时间段筛选销售数据
+function filterSalesByTimeSlot(timeSlot) {
+    console.log(`根据时间段筛选: ${timeSlot}`);
     
-    return productCategoryAnalysis;
+    // 如果选择了全部，恢复原始数据
+    if (!timeSlot || timeSlot === "all") {
+        productCategoryAnalysis = JSON.parse(JSON.stringify(window.originalProductCategoryAnalysis || {}));
+        window.currentTimeSlot = null;
+        displayProductCategoryAnalysis();
+        return;
+    }
+    
+    // 保存当前选择的场次
+    window.currentTimeSlot = timeSlot;
+    
+    // 定义时间段范围
+    const timeSlotRanges = {
+        '早场': { start: 8, end: 12 },
+        '午场': { start: 12, end: 16 },
+        '晚场': { start: 16, end: 20 },
+        '夜场': { start: 20, end: 24 }
+    };
+    
+    // 获取当前选择的时间段范围
+    const selectedRange = timeSlotRanges[timeSlot];
+    if (!selectedRange) {
+        console.error(`无效的时间段: ${timeSlot}`);
+        return;
+    }
+    
+    // 重新筛选原始结果中符合时间段的销售数据
+    productCategoryAnalysis = {};
+    
+    // 筛选符合时间段的销售数据
+    matchedResults.forEach(result => {
+        if (!result.matched || !result.anchor) return;
+        
+        const anchorName = result.anchor.trim();
+        const saleInfo = extractSaleInfo(result.sale);
+        const price = parseFloat(saleInfo.price) || 0;
+        const product = saleInfo.product || '';
+        
+        // 获取销售时间
+        const saleTime = extractSaleTime(result.sale);
+        if (!saleTime) return; // 跳过没有时间信息的销售
+        
+        // 解析小时
+        const hour = parseInt(saleTime.split(':')[0], 10);
+        
+        // 检查是否在选定的时间段内
+        if (hour >= selectedRange.start && hour < selectedRange.end) {
+            // 简单的商品分类判断
+            const isSourceProduct = product.includes('源悦');
+            const isChunProduct = product.includes('莼悦');
+            const isWangProduct = product.includes('旺玥');
+            const isRoyalProduct = product.includes('皇家');
+            
+            if (!productCategoryAnalysis[anchorName]) {
+                productCategoryAnalysis[anchorName] = {
+                    '源悦': 0,
+                    '莼悦': 0,
+                    '旺玥': 0,
+                    '皇家': 0
+                };
+            }
+            
+            if (isSourceProduct) productCategoryAnalysis[anchorName]['源悦'] += price;
+            else if (isChunProduct) productCategoryAnalysis[anchorName]['莼悦'] += price;
+            else if (isWangProduct) productCategoryAnalysis[anchorName]['旺玥'] += price;
+            else if (isRoyalProduct) productCategoryAnalysis[anchorName]['皇家'] += price;
+            else {
+                // 通过品牌名称判断类别
+                let brand = saleInfo.brand || '';
+                if (brand.includes('源悦')) productCategoryAnalysis[anchorName]['源悦'] += price;
+                else if (brand.includes('莼悦')) productCategoryAnalysis[anchorName]['莼悦'] += price;
+                else if (brand.includes('旺玥')) productCategoryAnalysis[anchorName]['旺玥'] += price;
+                else if (brand.includes('皇家')) productCategoryAnalysis[anchorName]['皇家'] += price;
+                // 如果没有明确的类别，默认归为皇家类
+                else productCategoryAnalysis[anchorName]['皇家'] += price;
+            }
+        }
+    });
+    
+    console.log(`${timeSlot} 筛选结果:`, productCategoryAnalysis);
+    
+    // 重新显示分析结果
+    displayProductCategoryAnalysis();
 }
 
 // 显示商品分类分析结果
@@ -2433,52 +2531,84 @@ function displayProductCategoryAnalysis() {
     // 创建内容 - 使用更美观的卡片设计
     let html = `
     <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 fw-bold">
+        <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center flex-wrap">
+            <h5 class="mb-0 mb-md-0 fw-bold">
                 <i class="bi bi-bar-chart-fill me-2"></i>各主播商品类别销售额分析
             </h5>
-            <div class="dropdown">
-                <button class="btn btn-outline-light dropdown-toggle shadow-sm" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-filter me-1"></i> 
-                    <span class="me-1">排序:</span>
-                    <span class="badge bg-white text-primary rounded-pill d-inline-flex align-items-center px-2 py-1">
-                        <span class="sort-color-dot rounded-circle me-1" style="
-                            background-color: ${sortCategory === '总计' ? '#36b9cc' : 
-                                           sortCategory === '源悦' ? '#4e73df' : 
-                                           sortCategory === '莼悦' ? '#1cc88a' : 
-                                           sortCategory === '旺玥' ? '#f6c23e' : 
-                                           sortCategory === '皇家' ? '#e74a3b' : '#36b9cc'};
-                            width: 8px; 
-                            height: 8px; 
-                            display: inline-block;
-                            vertical-align: middle;">
+            <div class="d-flex align-items-center mt-2 mt-md-0">
+                <!-- 场次筛选按钮 -->
+                <div class="dropdown me-2">
+                    <button class="btn btn-outline-light dropdown-toggle shadow-sm" type="button" id="timeSlotDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-clock me-1"></i> 
+                        <span class="me-1">场次:</span>
+                        <span class="badge bg-white text-primary rounded-pill d-inline-flex align-items-center px-2 py-1">
+                            ${window.currentTimeSlot || '全部'}
                         </span>
-                        ${sortCategory === '总计' ? '总计' : sortCategory + '类'}
-                    </span>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="sortDropdown" style="min-width: 180px;">
-                    <li><h6 class="dropdown-header">选择排序类别</h6></li>
-                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '总计' ? 'active' : ''}" href="#" data-category="总计">
-                        <span class="sort-indicator rounded-circle me-2" style="background-color: #36b9cc; width: 12px; height: 12px;"></span>
-                        按总计排序
-                    </a></li>
-                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '源悦' ? 'active' : ''}" href="#" data-category="源悦">
-                        <span class="sort-indicator rounded-circle me-2" style="background-color: #4e73df; width: 12px; height: 12px;"></span>
-                        按源悦类排序
-                    </a></li>
-                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '莼悦' ? 'active' : ''}" href="#" data-category="莼悦">
-                        <span class="sort-indicator rounded-circle me-2" style="background-color: #1cc88a; width: 12px; height: 12px;"></span>
-                        按莼悦类排序
-                    </a></li>
-                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '旺玥' ? 'active' : ''}" href="#" data-category="旺玥">
-                        <span class="sort-indicator rounded-circle me-2" style="background-color: #f6c23e; width: 12px; height: 12px;"></span>
-                        按旺玥类排序
-                    </a></li>
-                    <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '皇家' ? 'active' : ''}" href="#" data-category="皇家">
-                        <span class="sort-indicator rounded-circle me-2" style="background-color: #e74a3b; width: 12px; height: 12px;"></span>
-                        按皇家类排序
-                    </a></li>
-                </ul>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="timeSlotDropdown" style="min-width: 180px;">
+                        <li><h6 class="dropdown-header">选择场次</h6></li>
+                        <li><a class="dropdown-item time-slot-option d-flex align-items-center ${!window.currentTimeSlot ? 'active' : ''}" href="#" data-time-slot="all">
+                            <i class="bi bi-check2-all me-2 text-primary"></i>全部场次
+                        </a></li>
+                        <li><a class="dropdown-item time-slot-option d-flex align-items-center ${window.currentTimeSlot === '早场' ? 'active' : ''}" href="#" data-time-slot="早场">
+                            <i class="bi bi-sunrise me-2 text-warning"></i>早场 (8:00-12:00)
+                        </a></li>
+                        <li><a class="dropdown-item time-slot-option d-flex align-items-center ${window.currentTimeSlot === '午场' ? 'active' : ''}" href="#" data-time-slot="午场">
+                            <i class="bi bi-sun me-2 text-danger"></i>午场 (12:00-16:00)
+                        </a></li>
+                        <li><a class="dropdown-item time-slot-option d-flex align-items-center ${window.currentTimeSlot === '晚场' ? 'active' : ''}" href="#" data-time-slot="晚场">
+                            <i class="bi bi-sunset me-2 text-primary"></i>晚场 (16:00-20:00)
+                        </a></li>
+                        <li><a class="dropdown-item time-slot-option d-flex align-items-center ${window.currentTimeSlot === '夜场' ? 'active' : ''}" href="#" data-time-slot="夜场">
+                            <i class="bi bi-moon-stars me-2 text-info"></i>夜场 (20:00-24:00)
+                        </a></li>
+                    </ul>
+                </div>
+                
+                <!-- 排序筛选按钮 -->
+                <div class="dropdown">
+                    <button class="btn btn-outline-light dropdown-toggle shadow-sm" type="button" id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-filter me-1"></i> 
+                        <span class="me-1">排序:</span>
+                        <span class="badge bg-white text-primary rounded-pill d-inline-flex align-items-center px-2 py-1">
+                            <span class="sort-color-dot rounded-circle me-1" style="
+                                background-color: ${sortCategory === '总计' ? '#36b9cc' : 
+                                               sortCategory === '源悦' ? '#4e73df' : 
+                                               sortCategory === '莼悦' ? '#1cc88a' : 
+                                               sortCategory === '旺玥' ? '#f6c23e' : 
+                                               sortCategory === '皇家' ? '#e74a3b' : '#36b9cc'};
+                                width: 8px; 
+                                height: 8px; 
+                                display: inline-block;
+                                vertical-align: middle;">
+                            </span>
+                            ${sortCategory === '总计' ? '总计' : sortCategory + '类'}
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="sortDropdown" style="min-width: 180px;">
+                        <li><h6 class="dropdown-header">选择排序类别</h6></li>
+                        <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '总计' ? 'active' : ''}" href="#" data-category="总计">
+                            <span class="sort-indicator rounded-circle me-2" style="background-color: #36b9cc; width: 12px; height: 12px;"></span>
+                            按总计排序
+                        </a></li>
+                        <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '源悦' ? 'active' : ''}" href="#" data-category="源悦">
+                            <span class="sort-indicator rounded-circle me-2" style="background-color: #4e73df; width: 12px; height: 12px;"></span>
+                            按源悦类排序
+                        </a></li>
+                        <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '莼悦' ? 'active' : ''}" href="#" data-category="莼悦">
+                            <span class="sort-indicator rounded-circle me-2" style="background-color: #1cc88a; width: 12px; height: 12px;"></span>
+                            按莼悦类排序
+                        </a></li>
+                        <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '旺玥' ? 'active' : ''}" href="#" data-category="旺玥">
+                            <span class="sort-indicator rounded-circle me-2" style="background-color: #f6c23e; width: 12px; height: 12px;"></span>
+                            按旺玥类排序
+                        </a></li>
+                        <li><a class="dropdown-item sort-option d-flex align-items-center ${sortCategory === '皇家' ? 'active' : ''}" href="#" data-category="皇家">
+                            <span class="sort-indicator rounded-circle me-2" style="background-color: #e74a3b; width: 12px; height: 12px;"></span>
+                            按皇家类排序
+                        </a></li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="card-body p-0">
@@ -2692,6 +2822,37 @@ function displayProductCategoryAnalysis() {
         });
     });
     
+    // 添加场次筛选事件处理
+    document.querySelectorAll('.time-slot-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const timeSlot = this.getAttribute('data-time-slot');
+            console.log(`选择场次: ${timeSlot}`);
+            
+            // 添加点击反馈效果
+            const dropdownBtn = document.getElementById('timeSlotDropdown');
+            if (dropdownBtn) {
+                // 添加临时动画类
+                dropdownBtn.classList.add('btn-flash');
+                // 移除动画类
+                setTimeout(() => {
+                    dropdownBtn.classList.remove('btn-flash');
+                }, 300);
+            }
+            
+            // 调用筛选函数
+            filterSalesByTimeSlot(timeSlot);
+            
+            // 更新场次筛选按钮文字
+            if (dropdownBtn) {
+                const badgeSpan = dropdownBtn.querySelector('.badge');
+                if (badgeSpan) {
+                    badgeSpan.textContent = timeSlot === 'all' ? '全部' : timeSlot;
+                }
+            }
+        });
+    });
+    
     // 添加CSS样式
     if (!document.getElementById('sort-button-styles')) {
         const styleEl = document.createElement('style');
@@ -2725,6 +2886,11 @@ function displayProductCategoryAnalysis() {
                 100% { background-color: rgba(255, 255, 255, 0.1); }
             }
             
+            /* 时间段筛选按钮样式 */
+            .time-slot-option.active i {
+                font-weight: bold;
+            }
+            
             /* 响应式样式 */
             @media (max-width: 768px) {
                 .card-header {
@@ -2734,13 +2900,26 @@ function displayProductCategoryAnalysis() {
                 
                 .card-header .dropdown {
                     margin-top: 10px;
-                    align-self: flex-end;
+                }
+                
+                .card-header .d-flex {
+                    width: 100%;
+                    justify-content: space-between;
                 }
             }
             
             @media (max-width: 480px) {
-                #sortDropdown .me-1:first-child {
+                #sortDropdown .me-1:first-child,
+                #timeSlotDropdown .me-1:first-child {
                     display: none;
+                }
+                
+                .card-header .d-flex {
+                    flex-wrap: wrap;
+                }
+                
+                .card-header .dropdown {
+                    margin-top: 8px;
                 }
             }
         `;
