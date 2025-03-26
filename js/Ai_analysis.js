@@ -448,7 +448,7 @@ function prepareAnchorDataForAI() {
                         brand = '莼悦';
                     } else if (productName.includes('旺玥')) {
                         brand = '旺玥';
-                    } else if (productName.includes('皇家') && !productName.includes('莼悦') && !productName.includes('旺玥')) {
+                    } else if (productName.includes('皇家') && !productName.includes('莼悦') && !productName.includes('旺玥') && !productName.includes('源悦')) {
                         brand = '皇家';
                     }
                     

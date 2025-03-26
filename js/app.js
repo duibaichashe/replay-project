@@ -242,10 +242,10 @@ function handleFileSelection(dropZone, file) {
     // 获取文件类型
     const fileType = dropZone.dataset.type;
     if (!fileType) {
-        console.error('未找到上传区域类型标记');
-        return;
-    }
-    
+            console.error('未找到上传区域类型标记');
+            return;
+        }
+        
     // 获取文件信息容器
     let fileInfoId;
     if (fileType === 'sales') {
@@ -259,35 +259,35 @@ function handleFileSelection(dropZone, file) {
         return;
     }
     
-    const fileInfo = document.getElementById(fileInfoId);
-    
-    if (fileInfo) {
-        // 找到文件详情元素
-        const fileDetails = fileInfo.querySelector('.file-details');
-        const fileNameElem = fileInfo.querySelector('.file-name');
-        const fileSizeElem = fileInfo.querySelector('.file-size');
+        const fileInfo = document.getElementById(fileInfoId);
         
-        // 更新文件信息显示
-        if (fileNameElem) fileNameElem.textContent = file.name;
-        if (fileSizeElem) fileSizeElem.textContent = formatFileSize(file.size);
+        if (fileInfo) {
+            // 找到文件详情元素
+            const fileDetails = fileInfo.querySelector('.file-details');
+            const fileNameElem = fileInfo.querySelector('.file-name');
+            const fileSizeElem = fileInfo.querySelector('.file-size');
+            
+            // 更新文件信息显示
+            if (fileNameElem) fileNameElem.textContent = file.name;
+            if (fileSizeElem) fileSizeElem.textContent = formatFileSize(file.size);
+            
+            // 显示文件详情区域
+            if (fileDetails) fileDetails.classList.remove('d-none');
+        } else {
+            console.error(`未找到文件信息容器: #${fileInfoId}`);
+        }
         
-        // 显示文件详情区域
-        if (fileDetails) fileDetails.classList.remove('d-none');
-    } else {
-        console.error(`未找到文件信息容器: #${fileInfoId}`);
-    }
-    
-    // 检查是否是Excel文件
-    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
-    
-    // 更新状态显示
+        // 检查是否是Excel文件
+        const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+        
+        // 更新状态显示
     const statusId = dropZone.dataset.status;
-    
-    if (isExcel) {
+        
+        if (isExcel) {
         processUploadedFile(file, fileType);
-    } else {
-        document.getElementById(statusId).innerHTML = 
-            `<div class="alert alert-danger">请上传Excel文件 (.xlsx 或 .xls)</div>`;
+        } else {
+            document.getElementById(statusId).innerHTML = 
+                `<div class="alert alert-danger">请上传Excel文件 (.xlsx 或 .xls)</div>`;
     }
 }
 
@@ -850,7 +850,7 @@ function processScheduleData(data) {
                 month = dateMatch[1].padStart(2, '0');
                 day = dateMatch[2].padStart(2, '0');
                 currentDate = `${month}-${day}`;
-                dateString = firstCell;
+                    dateString = firstCell;
                 console.log(`匹配到"X月X号/日"格式: ${firstCell} -> ${currentDate}`);
             } 
             // 尝试匹配"X月号X"格式（如"2月号20"）
@@ -961,8 +961,8 @@ function processScheduleData(data) {
         const existingAnchor = scheduleMap[currentDate][timeSlot].find(a => a.anchor === anchorName);
         if (!existingAnchor) {
             // 仅添加一次主播，避免重复计算工作时长
-            scheduleMap[currentDate][timeSlot].push({
-                anchor: anchorName,
+        scheduleMap[currentDate][timeSlot].push({
+            anchor: anchorName,
                 position: {
                     wang: wangTier,  // 旺玥档位
                     yuan: yuanTier   // 源悦档位
@@ -1705,9 +1705,23 @@ function displayResultsPage(results, page) {
         const time = saleInfo.time || '-';
         
         // 创建日期时间显示
-        let timeDisplay = `${result.date} ${result.time}`;
+        let timeDisplay = '';
+        if (time && time !== '-') {
+            timeDisplay = time;
+        } else if (result.time) {
+            timeDisplay = result.time;
+        } else {
+            timeDisplay = '-';
+        }
+        
+        // 添加日期信息（如果有）
+        if (result.date) {
+            timeDisplay = `<div>${timeDisplay}</div><div class="small text-muted">(${result.date})</div>`;
+        }
+        
+        // 如果有匹配日期且不同于原始日期，显示匹配信息
         if (result.matchedDate && result.matchedDate !== result.date) {
-            timeDisplay += `<br><small class="text-danger">(匹配到 ${result.matchedDate})</small>`;
+            timeDisplay += `<div class="small text-danger">(匹配到 ${result.matchedDate})</div>`;
         }
         
         // 确保主播名称正确显示 
@@ -1944,8 +1958,8 @@ function extractSaleInfo(saleRow) {
     let brand = '';
     
     try {
-        // 如果是对象（已解析的JSON）
-        if (typeof saleRow === 'object' && !Array.isArray(saleRow)) {
+    // 如果是对象（已解析的JSON）
+    if (typeof saleRow === 'object' && !Array.isArray(saleRow)) {
             // 这可能是格式化后的数据对象
             if (saleRow.product !== undefined) {
                 // 如果已经有product属性，可能是已经处理过的对象
@@ -1959,10 +1973,10 @@ function extractSaleInfo(saleRow) {
             price = saleRow['订单应付金额'] || saleRow['订单金额'] || saleRow['金额'] || '-';
             time = saleRow['订单提交时间'] || saleRow['提交时间'] || saleRow['下单时间'] || '-';
         }
-        // 如果是数组（原始Excel行数据）
+    // 如果是数组（原始Excel行数据）
         else if (Array.isArray(saleRow)) {
-            // 针对常见的数据格式进行处理
-            // 假设格式为：[商品名, 规格, 数量, 价格, 时间]
+        // 针对常见的数据格式进行处理
+        // 假设格式为：[商品名, 规格, 数量, 价格, 时间]
             product = saleRow[0] || '-';
             spec = saleRow[1] || '-';
             quantity = saleRow[2] || '-';
@@ -2249,29 +2263,75 @@ function extractSaleDate(sale) {
     
     // 尝试从字符串中提取日期部分
     if (dateTimeStr) {
+        console.log(`尝试从 ${dateTimeStr} 提取日期`);
+        
         // 匹配YYYY-MM-DD或YYYY/MM/DD格式
-        const dateMatch = dateTimeStr.match(/(\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/);
+        const dateMatch = dateTimeStr.match(/(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/);
         if (dateMatch) {
-            return dateMatch[0].replace(/\//g, '-'); // 统一替换为破折号格式
+            // 提取年月日并验证
+            const year = parseInt(dateMatch[1], 10);
+            const month = parseInt(dateMatch[2], 10);
+            const day = parseInt(dateMatch[3], 10);
+            
+            // 验证月份和日期是否有效
+            if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+                console.warn(`提取到无效日期: ${dateMatch[0]}, 年=${year}, 月=${month}, 日=${day}`);
+                return null;
+            }
+            
+            // 格式化为YYYY-MM-DD，确保月和日是两位数
+            const formattedMonth = month.toString().padStart(2, '0');
+            const formattedDay = day.toString().padStart(2, '0');
+            const formattedDate = `${year}-${formattedMonth}-${formattedDay}`;
+            
+            console.log(`提取到日期: ${dateTimeStr} -> ${formattedDate}`);
+            return formattedDate;
         }
         
         // 匹配MM-DD或MM/DD格式，使用当前年份
-        const shortDateMatch = dateTimeStr.match(/(\d{1,2}[-\/]\d{1,2})/);
+        const shortDateMatch = dateTimeStr.match(/(\d{1,2})[-\/](\d{1,2})/);
         if (shortDateMatch) {
+            // 提取月日并验证
+            const month = parseInt(shortDateMatch[1], 10);
+            const day = parseInt(shortDateMatch[2], 10);
+            
+            // 验证月份和日期是否有效
+            if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+                console.warn(`提取到无效短日期: ${shortDateMatch[0]}, 月=${month}, 日=${day}`);
+                return null;
+            }
+            
             const currentYear = new Date().getFullYear();
-            return `${currentYear}-${shortDateMatch[0].replace(/\//g, '-')}`;
+            // 格式化为YYYY-MM-DD，确保月和日是两位数
+            const formattedMonth = month.toString().padStart(2, '0');
+            const formattedDay = day.toString().padStart(2, '0');
+            const formattedDate = `${currentYear}-${formattedMonth}-${formattedDay}`;
+            
+            console.log(`提取到短日期: ${dateTimeStr} -> ${formattedDate}`);
+            return formattedDate;
         }
         
         // 匹配中文日期格式（X月X日）
-        const chineseDateMatch = dateTimeStr.match(/(\d+月\d+[日号])/);
+        const chineseDateMatch = dateTimeStr.match(/(\d+)月(\d+)[日号]/);
         if (chineseDateMatch) {
-            const match = chineseDateMatch[0].match(/(\d+)月(\d+)[日号]/);
-            if (match) {
-                const month = match[1].padStart(2, '0');
-                const day = match[2].padStart(2, '0');
-                const currentYear = new Date().getFullYear();
-                return `${currentYear}-${month}-${day}`;
+            // 提取月日并验证
+            const month = parseInt(chineseDateMatch[1], 10);
+            const day = parseInt(chineseDateMatch[2], 10);
+            
+            // 验证月份和日期是否有效
+            if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+                console.warn(`提取到无效中文日期: ${chineseDateMatch[0]}, 月=${month}, 日=${day}`);
+                return null;
             }
+            
+                const currentYear = new Date().getFullYear();
+            // 格式化为YYYY-MM-DD，确保月和日是两位数
+            const formattedMonth = month.toString().padStart(2, '0');
+            const formattedDay = day.toString().padStart(2, '0');
+            const formattedDate = `${currentYear}-${formattedMonth}-${formattedDay}`;
+            
+            console.log(`提取到中文日期: ${dateTimeStr} -> ${formattedDate}`);
+            return formattedDate;
         }
     }
     
@@ -2360,7 +2420,7 @@ function analyzeProductCategories(results) {
         const isSourceProduct = product.includes('源悦');
         const isChunProduct = product.includes('莼悦');
         const isWangProduct = product.includes('旺玥');
-        const isRoyalProduct = product.includes('皇家');
+        const isRoyalProduct = product.includes('皇家') && !product.includes('旺玥') && !product.includes('莼悦');
         
         if (!productCategoryAnalysis[anchorName]) {
             productCategoryAnalysis[anchorName] = {
@@ -2381,7 +2441,7 @@ function analyzeProductCategories(results) {
             if (brand.includes('源悦')) productCategoryAnalysis[anchorName]['源悦'] += price;
             else if (brand.includes('莼悦')) productCategoryAnalysis[anchorName]['莼悦'] += price;
             else if (brand.includes('旺玥')) productCategoryAnalysis[anchorName]['旺玥'] += price;
-            else if (brand.includes('皇家')) productCategoryAnalysis[anchorName]['皇家'] += price;
+            else if (brand.includes('皇家') && !brand.includes('旺玥') && !brand.includes('莼悦')) productCategoryAnalysis[anchorName]['皇家'] += price;
             // 如果没有明确的类别，默认归为皇家类
             else productCategoryAnalysis[anchorName]['皇家'] += price;
         }
@@ -2451,7 +2511,7 @@ function filterSalesByTimeSlot(timeSlot) {
             const isSourceProduct = product.includes('源悦');
             const isChunProduct = product.includes('莼悦');
             const isWangProduct = product.includes('旺玥');
-            const isRoyalProduct = product.includes('皇家');
+            const isRoyalProduct = product.includes('皇家') && !product.includes('旺玥') && !product.includes('莼悦');
             
             if (!productCategoryAnalysis[anchorName]) {
                 productCategoryAnalysis[anchorName] = {
@@ -2472,7 +2532,7 @@ function filterSalesByTimeSlot(timeSlot) {
                 if (brand.includes('源悦')) productCategoryAnalysis[anchorName]['源悦'] += price;
                 else if (brand.includes('莼悦')) productCategoryAnalysis[anchorName]['莼悦'] += price;
                 else if (brand.includes('旺玥')) productCategoryAnalysis[anchorName]['旺玥'] += price;
-                else if (brand.includes('皇家')) productCategoryAnalysis[anchorName]['皇家'] += price;
+                else if (brand.includes('皇家') && !brand.includes('旺玥') && !brand.includes('莼悦')) productCategoryAnalysis[anchorName]['皇家'] += price;
                 // 如果没有明确的类别，默认归为皇家类
                 else productCategoryAnalysis[anchorName]['皇家'] += price;
             }
@@ -3149,24 +3209,214 @@ function updateProductCategoryStats(sourceAmount, chunAmount, wangAmount, royalA
 function getProductCategoryInsight(sourcePercent, chunPercent, wangPercent, royalPercent) {
     // 找出占比最高的类别
     const percentages = [
-        {name: '源悦类', value: parseFloat(sourcePercent)},
-        {name: '莼悦类', value: parseFloat(chunPercent)},
-        {name: '旺玥类', value: parseFloat(wangPercent)},
-        {name: '皇家类', value: parseFloat(royalPercent)}
+        {name: '源悦类', key: '源悦', value: parseFloat(sourcePercent)},
+        {name: '莼悦类', key: '莼悦', value: parseFloat(chunPercent)},
+        {name: '旺玥类', key: '旺玥', value: parseFloat(wangPercent)},
+        {name: '皇家类', key: '皇家', value: parseFloat(royalPercent)}
     ];
     
+    // 按占比从高到低排序
     percentages.sort((a, b) => b.value - a.value);
     
+    // 获取占比最高的品类
     const topCategory = percentages[0];
-    const secondCategory = percentages[1];
     
-    // 判断销售分布是否均衡
-    const isBalanced = percentages[0].value - percentages[3].value < 30;
+    // 如果没有匹配的销售数据，返回基本洞察
+    if (!matchedResults || matchedResults.length === 0) {
+        return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。`;
+    }
     
-    if (isBalanced) {
-        return `销售分布较为均衡，各类商品都有不错的表现。建议继续保持当前的销售策略，同时可以尝试进一步提升${topCategory.name}和${secondCategory.name}的销售占比。`;
-    } else {
-        return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value}%)。建议重点关注${percentages[3].name}的提升空间，可以考虑调整营销策略或主播排班方式来平衡各类商品销售。`;
+    try {
+        console.log(`开始分析${topCategory.name}销售情况...`);
+        
+        // 1. 按日期和品类统计销售额
+        const salesByDate = {};
+        const categoryTotals = {
+            '源悦': 0,
+            '莼悦': 0,
+            '旺玥': 0,
+            '皇家': 0
+        };
+        
+        // 确保销售记录都有日期
+        matchedResults.forEach(result => {
+            if (!result.matched) return;
+            
+            // 如果没有日期，尝试提取日期
+            if (!result.date) {
+                const extractedDate = extractSaleDate(result.sale);
+                console.log(`尝试提取日期: ${extractedDate}`);
+                
+                if (extractedDate) {
+                    const parts = extractedDate.split('-');
+                    if (parts.length >= 3) {
+                        // 确保月和日是数字并且有效
+                        const year = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10);
+                        const day = parseInt(parts[2], 10);
+                        
+                        // 验证日期合法性
+                        if (!isNaN(month) && !isNaN(day) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            // 转换为MM-DD格式
+                            result.date = `${parts[1]}-${parts[2]}`;
+                            console.log(`提取到有效日期: ${extractedDate} -> ${result.date}`);
+                        } else {
+                            console.warn(`提取到无效日期: ${extractedDate}, 年=${year}, 月=${month}, 日=${day}`);
+                        }
+                    } else if (parts.length === 2) {
+                        // 确保是MM-DD格式且有效
+                        const month = parseInt(parts[0], 10);
+                        const day = parseInt(parts[1], 10);
+                        
+                        if (!isNaN(month) && !isNaN(day) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                            result.date = extractedDate;
+                            console.log(`提取到有效短日期: ${extractedDate}`);
+                        } else {
+                            console.warn(`提取到无效短日期: ${extractedDate}, 月=${month}, 日=${day}`);
+                        }
+                    } else {
+                        console.warn(`日期格式无法解析: ${extractedDate}`);
+                    }
+                }
+            }
+            
+            // 验证现有日期格式是否有效
+            if (result.date) {
+                const parts = result.date.split('-');
+                if (parts.length >= 2) {
+                    const month = parseInt(parts[0], 10);
+                    const day = parseInt(parts[1], 10);
+                    
+                    if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+                        console.warn(`销售记录日期格式无效: ${result.date}, 已清除`);
+                        result.date = null; // 清除无效日期
+                    }
+                } else {
+                    console.warn(`销售记录日期格式异常: ${result.date}, 已清除`);
+                    result.date = null; // 清除异常日期
+                }
+            }
+            
+            if (!result.date) return; // 跳过没有日期的记录
+            
+            // 提取销售信息
+            const saleInfo = extractSaleInfo(result.sale);
+            const product = saleInfo.product || '';
+            const price = parseFloat(saleInfo.price) || 0;
+            
+            if (isNaN(price) || price <= 0) return; // 跳过无效价格
+            
+            const date = result.date;
+            
+            // 初始化日期数据
+            if (!salesByDate[date]) {
+                salesByDate[date] = {
+                    '源悦': 0,
+                    '莼悦': 0,
+                    '旺玥': 0,
+                    '皇家': 0,
+                    'total': 0
+                };
+            }
+            
+            // 根据产品名称或品牌确定类别并更新销售额
+            let category = null;
+            
+            if (product.includes('源悦') || (saleInfo.brand && saleInfo.brand.includes('源悦'))) {
+                category = '源悦';
+            } else if (product.includes('莼悦') || (saleInfo.brand && saleInfo.brand.includes('莼悦'))) {
+                category = '莼悦';
+            } else if (product.includes('旺玥') || (saleInfo.brand && saleInfo.brand.includes('旺玥'))) {
+                category = '旺玥';
+            } else if ((product.includes('皇家') && !product.includes('旺玥') && !product.includes('莼悦')) || 
+                       (saleInfo.brand && saleInfo.brand.includes('皇家') && !saleInfo.brand.includes('旺玥') && !saleInfo.brand.includes('莼悦'))) {
+                category = '皇家';
+            } else {
+                // 默认归类为皇家类
+                category = '皇家';
+            }
+            
+            // 更新销售额
+            salesByDate[date][category] += price;
+            salesByDate[date]['total'] += price;
+            categoryTotals[category] += price;
+        });
+        
+        console.log('各品类总销售额:', categoryTotals);
+        console.log('各日期销售数据:', salesByDate);
+        
+        // 2. 找出热门品类销售额最高的日期
+        let bestDate = '';
+        let bestDateSales = 0;
+        
+        Object.entries(salesByDate).forEach(([date, sales]) => {
+            if (sales[topCategory.key] > bestDateSales) {
+                bestDate = date;
+                bestDateSales = sales[topCategory.key];
+            }
+        });
+        
+        // 如果没有找到有效日期，返回基本洞察
+        if (!bestDate || bestDateSales <= 0) {
+            return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。`;
+        }
+        
+        console.log(`${topCategory.name}销售额最高的日期是${bestDate}，销售额为${bestDateSales}`);
+        
+        // 3. 计算热门品类在最佳日期的销售占比
+        const topCategoryTotal = categoryTotals[topCategory.key];
+        const bestDatePercent = topCategoryTotal > 0 ? 
+            ((bestDateSales / topCategoryTotal) * 100).toFixed(1) : 0;
+        
+        // 4. 分析其他品类在同一天的表现
+        const otherCategoryInsights = [];
+        
+        for (const category of percentages.slice(1)) {
+            const categorySalesOnBestDate = salesByDate[bestDate][category.key] || 0;
+            const categoryTotal = categoryTotals[category.key] || 0;
+            
+            if (categoryTotal > 0 && categorySalesOnBestDate > 0) {
+                const percent = ((categorySalesOnBestDate / categoryTotal) * 100).toFixed(1);
+                otherCategoryInsights.push(`${category.name}(${percent}%)`);
+            }
+        }
+        
+        // 5. 格式化日期为中文格式
+        let month, day;
+        const dateParts = bestDate.split('-');
+        
+        if (dateParts.length >= 2) {
+            month = parseInt(dateParts[0], 10);
+            day = parseInt(dateParts[1], 10);
+            
+            // 检查月份和日期是否有效
+            if (isNaN(month) || isNaN(day) || month < 1 || month > 12 || day < 1 || day > 31) {
+                console.warn(`日期格式错误: ${bestDate}, 月份=${month}, 日=${day}`);
+                return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。`;
+            }
+        } else {
+            console.warn(`日期格式无法解析: ${bestDate}`);
+            return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。`;
+        }
+        
+        // 确保使用正确的月日格式
+        const dateChinese = `${month}月${day}日`;
+        console.log(`格式化日期: ${bestDate} -> ${dateChinese}`);
+        
+        // 6. 生成最终洞察内容
+        let insight = `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。${dateChinese}是该品类销售额最高的日期，当天销售额占该品类总额的${bestDatePercent}%`;
+        
+        if (otherCategoryInsights.length > 0) {
+            insight += `，同时其他品类在当天的表现也不错：${otherCategoryInsights.join('、')}。`;
+        } else {
+            insight += `。`;
+        }
+        
+        return insight;
+        
+    } catch (error) {
+        console.error('生成销售分析洞察时出错:', error);
+        return `${topCategory.name}表现突出，占据了销售的主要份额(${topCategory.value.toFixed(1)}%)。`;
     }
 }
 
@@ -3180,7 +3430,7 @@ function createAnchorCategoryCharts(anchorName) {
             alert(`没有找到主播 ${anchorName} 的销售数据`);
             return;
         }
-        
+
         // 销毁现有的图表实例
         if (window.anchorCategoryPieChart instanceof Chart) {
             try {
@@ -3200,10 +3450,10 @@ function createAnchorCategoryCharts(anchorName) {
         
         // 创建类目数据数组，计算百分比，并按占比排序
         const categoriesData = [
-            { name: '源悦类', value: categoryData['源悦'] || 0, color: '#4e73df' },
-            { name: '莼悦类', value: categoryData['莼悦'] || 0, color: '#1cc88a' },
-            { name: '旺玥类', value: categoryData['旺玥'] || 0, color: '#f6c23e' },
-            { name: '皇家类', value: categoryData['皇家'] || 0, color: '#e74a3b' }
+                { name: '源悦类', value: categoryData['源悦'] || 0, color: '#4e73df' },
+                { name: '莼悦类', value: categoryData['莼悦'] || 0, color: '#1cc88a' },
+                { name: '旺玥类', value: categoryData['旺玥'] || 0, color: '#f6c23e' },
+                { name: '皇家类', value: categoryData['皇家'] || 0, color: '#e74a3b' }
         ];
         
         // 计算百分比并排序（从高到低）
@@ -3296,9 +3546,9 @@ function createAnchorCategoryCharts(anchorName) {
             chartInstance: window.anchorCategoryPieChart,
             onAfterShow: function(modalElement) {
                 console.log('主播类目销售分析模态框已显示，初始化内容和事件...');
-                
-                // 创建饼图
-                const ctx = document.getElementById('anchor-category-pie-chart').getContext('2d');
+        
+        // 创建饼图
+        const ctx = document.getElementById('anchor-category-pie-chart').getContext('2d');
                 
                 // 使用排序后的类目数据创建饼图数据
                 const chartLabels = categoriesData.map(category => category.name);
@@ -3314,99 +3564,99 @@ function createAnchorCategoryCharts(anchorName) {
                     }
                 });
                 
-                window.anchorCategoryPieChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
+        window.anchorCategoryPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
                         labels: chartLabels,
-                        datasets: [{
+                datasets: [{
                             data: chartData,
                             backgroundColor: chartColors,
                             hoverBackgroundColor: chartHoverColors,
-                            hoverBorderColor: "rgba(234, 236, 244, 1)",
-                        }]
+                    hoverBorderColor: "rgba(234, 236, 244, 1)",
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20
+                        }
                     },
-                    options: {
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom',
-                                labels: {
-                                    usePointStyle: true,
-                                    padding: 20
-                                }
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        const value = context.raw;
-                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                        const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                        return `¥${value.toLocaleString('zh-CN')} (${percentage}%)`;
-                                    }
-                                }
-                            }
-                        },
-                        cutout: '70%',
-                        elements: {
-                            arc: {
-                                borderWidth: 0
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `¥${value.toLocaleString('zh-CN')} (${percentage}%)`;
                             }
                         }
                     }
-                });
-                
+                },
+                cutout: '70%',
+                elements: {
+                    arc: {
+                        borderWidth: 0
+                    }
+                }
+            }
+        });
+        
                 // 为导出数据按钮添加事件处理
-                const exportDataBtn = document.getElementById('export-anchor-data');
-                if (exportDataBtn) {
-                    exportDataBtn.onclick = function() {
-                        // 创建导出数据
-                        const exportData = {
-                            anchor: anchorName,
-                            categories: {
-                                '源悦类': categoryData['源悦'] || 0,
-                                '莼悦类': categoryData['莼悦'] || 0,
-                                '旺玥类': categoryData['旺玥'] || 0,
-                                '皇家类': categoryData['皇家'] || 0
-                            },
-                            totalSales: totalSales,
-                            date: new Date().toLocaleDateString('zh-CN')
-                        };
-                        
-                        // 转换为CSV字符串
-                        const csvContent = "数据:,金额(元),占比\n" + 
-                            Object.entries(exportData.categories).map(([key, value]) => {
-                                const percentage = totalSales > 0 ? ((value / totalSales) * 100).toFixed(1) : '0.0';
-                                return `${key},${value.toFixed(2)},${percentage}%`;
-                            }).join('\n');
-                        
-                        // 创建下载链接
-                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                        const url = URL.createObjectURL(blob);
-                        const link = document.createElement('a');
-                        link.setAttribute('href', url);
-                        link.setAttribute('download', `${anchorName}-类目销售数据-${new Date().toLocaleDateString('zh-CN')}.csv`);
-                        link.style.visibility = 'hidden';
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        
-                        // 显示提示
-                        showNotice('success', '数据导出成功！');
-                    };
+        const exportDataBtn = document.getElementById('export-anchor-data');
+        if (exportDataBtn) {
+            exportDataBtn.onclick = function() {
+                // 创建导出数据
+                const exportData = {
+                    anchor: anchorName,
+                    categories: {
+                        '源悦类': categoryData['源悦'] || 0,
+                        '莼悦类': categoryData['莼悦'] || 0,
+                        '旺玥类': categoryData['旺玥'] || 0,
+                        '皇家类': categoryData['皇家'] || 0
+                    },
+                    totalSales: totalSales,
+                    date: new Date().toLocaleDateString('zh-CN')
+                };
+                
+                // 转换为CSV字符串
+                const csvContent = "数据:,金额(元),占比\n" + 
+                    Object.entries(exportData.categories).map(([key, value]) => {
+                        const percentage = totalSales > 0 ? ((value / totalSales) * 100).toFixed(1) : '0.0';
+                        return `${key},${value.toFixed(2)},${percentage}%`;
+                    }).join('\n');
+                
+                // 创建下载链接
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `${anchorName}-类目销售数据-${new Date().toLocaleDateString('zh-CN')}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // 显示提示
+                showNotice('success', '数据导出成功！');
+            };
+        }
+        
+        // 查看详情按钮
+        const showDetailsBtn = document.getElementById('show-anchor-details');
+        if (showDetailsBtn) {
+            showDetailsBtn.onclick = function() {
+                // 获取该主播的所有订单
+                if (!window.analysisResults) {
+                    alert('无法获取分析结果，请重新分析数据');
+                    return;
                 }
                 
-                // 查看详情按钮
-                const showDetailsBtn = document.getElementById('show-anchor-details');
-                if (showDetailsBtn) {
-                    showDetailsBtn.onclick = function() {
-                        // 获取该主播的所有订单
-                        if (!window.analysisResults) {
-                            alert('无法获取分析结果，请重新分析数据');
-                            return;
-                        }
-                        
-                        // 筛选出该主播的所有订单
-                        const anchorOrders = window.analysisResults.filter(result => {
+                // 筛选出该主播的所有订单
+                const anchorOrders = window.analysisResults.filter(result => {
                             // 检查anchor是否为对象或字符串，兼容不同数据结构
                             if (result.anchor) {
                                 if (typeof result.anchor === 'object' && result.anchor.name) {
@@ -3416,27 +3666,27 @@ function createAnchorCategoryCharts(anchorName) {
                                 }
                             }
                             return false;
-                        });
-                        
-                        if (anchorOrders.length === 0) {
-                            alert(`未找到${anchorName}的订单记录`);
-                            return;
-                        }
-                        
-                        // 按照商品类别分组订单
-                        const ordersByCategory = {
-                            '旺玥': [],
-                            '源悦': [],
-                            '莼悦': [],
-                            '皇家': []
-                        };
-                        
+                });
+                
+                if (anchorOrders.length === 0) {
+                    alert(`未找到${anchorName}的订单记录`);
+                    return;
+                }
+                
+                // 按照商品类别分组订单
+                const ordersByCategory = {
+                    '旺玥': [],
+                    '源悦': [],
+                    '莼悦': [],
+                    '皇家': []
+                };
+                
                         // 记录日志以便调试
                         console.log(`找到${anchorName}的订单:`, anchorOrders.length);
-                        
+                
                         // 手动分类订单
-                        anchorOrders.forEach(order => {
-                            const saleInfo = extractSaleInfo(order.sale);
+                anchorOrders.forEach(order => {
+                    const saleInfo = extractSaleInfo(order.sale);
                             const productName = saleInfo.product || '';
                             
                             console.log('订单商品名称:', productName);
@@ -3444,12 +3694,12 @@ function createAnchorCategoryCharts(anchorName) {
                             // 分类规则重新设计，确保所有订单都能分类成功
                             if (productName.includes('旺玥') || productName.includes('旺悦')) {
                                 // 包含旺玥或旺悦的商品归类为旺玥类
-                                ordersByCategory['旺玥'].push(order);
+                        ordersByCategory['旺玥'].push(order);
                                 console.log(`订单分类为旺玥类: ${productName}`);
                             } 
                             else if (productName.includes('莼悦') || productName.includes('纯悦')) {
                                 // 包含莼悦或纯悦的商品归类为莼悦类
-                                ordersByCategory['莼悦'].push(order);
+                        ordersByCategory['莼悦'].push(order);
                                 console.log(`订单分类为莼悦类: ${productName}`);
                             } 
                             else if (productName.includes('源悦') || productName.includes('原悦')) {
@@ -3457,13 +3707,13 @@ function createAnchorCategoryCharts(anchorName) {
                                 ordersByCategory['源悦'].push(order);
                                 console.log(`订单分类为源悦类: ${productName}`);
                             } 
-                            else if (productName.includes('皇家') || 
-                                    productName.includes('美素佳儿') || 
+                            else if ((productName.includes('皇家') && !productName.includes('旺玥') && !productName.includes('旺悦') && !productName.includes('莼悦') && !productName.includes('纯悦') && !productName.includes('源悦') && !productName.includes('原悦')) || 
+                                    (productName.includes('美素佳儿') || 
                                     productName.includes('皇家美素') || 
                                     productName.includes('荷兰皇家') || 
-                                    productName.toLowerCase().includes('friso')) {
+                                    productName.toLowerCase().includes('friso'))) {
                                 // 皇家类产品
-                                ordersByCategory['皇家'].push(order);
+                        ordersByCategory['皇家'].push(order);
                                 console.log(`订单分类为皇家类: ${productName}`);
                             } 
                             else if (productName.includes('美素') || 
@@ -3577,20 +3827,20 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
             tabContentHtml += `
                 <div class="tab-pane fade ${firstTab ? 'show active' : ''}" id="panel-${categoryId}" role="tabpanel">
                     <h6 class="mb-3">${category}类订单明细 (共${orders.length}条)</h6>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>商品名称</th>
-                                    <th>规格</th>
-                                    <th>数量</th>
-                                    <th>金额</th>
-                                    <th>订单时间</th>
-                                </tr>
-                            </thead>
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>商品名称</th>
+                                                <th>规格</th>
+                                                <th>数量</th>
+                                                <th>金额</th>
+                                                <th>订单时间</th>
+                                            </tr>
+                                        </thead>
                             <tbody id="tbody-${categoryId}"></tbody>
-                        </table>
-                    </div>
+                                    </table>
+                                </div>
                     <div class="d-flex justify-content-between align-items-center mt-2">
                         <div>
                             <span class="badge bg-primary" id="page-info-${categoryId}">
@@ -3632,11 +3882,11 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                         <div class="modal-header bg-primary text-white">
                             <h5 class="modal-title">${anchorName} 订单明细</h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
+                                    </div>
                         <div class="modal-body">
                             <div class="alert alert-info mb-3">
                                 共找到 ${Object.values(ordersByCategory).flat().length} 条订单记录
-                            </div>
+                                </div>
                             <ul class="nav nav-tabs" id="categoryTabs" role="tablist">
                                 ${tabsHtml}
                             </ul>
@@ -3648,10 +3898,10 @@ function createOrderDetailModal(anchorName, ordersByCategory) {
                             <button type="button" id="export-orders-excel" class="btn btn-success">
                                 <i class="bi bi-file-excel me-1"></i> 导出订单
                             </button>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
             </div>
         `;
         
