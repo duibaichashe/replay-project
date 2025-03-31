@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>销售数据与主播排班匹配分析系统</title>
+    <title>美素佳儿DP-AI复盘系统</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <link rel="stylesheet" href="css/styles.css">
@@ -14,7 +14,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="#">
-                <img src="img/logo.svg" alt="DataMatch Logo" class="me-2">
+                <!-- 移除logo图片 -->
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -37,8 +37,8 @@
     <div class="container">
         <div class="main-container">
             <header class="text-center mb-5">
-                <h1 class="display-5 fw-bold text-primary mb-3">销售数据与主播排班匹配分析</h1>
-                <p class="lead text-secondary">上传销售数据和主播排班表，获取AI驱动的匹配分析和销售建议</p>
+                <h1 class="display-5 fw-bold text-primary mb-3">美素佳儿DP-AI复盘系统</h1>
+                <p class="lead text-secondary">美素佳儿抖音DP智能复盘系统通过整合直播销售数据、主播排班表及复盘文档，利用AI分析主播话术质量、互动节奏与排班效率，自动生成针对性优化方案与定制化话术指南，驱动主播能力提升与销售转化率增长，实现"数据归因-精准诊断-策略迭代"闭环管理。</p>
             </header>
 
             <main>
@@ -419,7 +419,7 @@
         </div>
 
         <footer class="text-center mt-4">
-            <p class="mb-0">销售数据与主播排班匹配分析系统 &copy; 2025</p>
+            <p class="mb-0">美素佳儿DP-AI复盘系统 &copy; 2025</p>
         </footer>
     </div>
 
@@ -574,6 +574,122 @@
                         <i class="bi bi-download me-1"></i>导出分析
                     </button>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 帮助模态框 -->
+    <div class="modal fade" id="help-modal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="helpModalLabel"><i class="bi bi-question-circle me-2"></i>系统使用帮助</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="accordion" id="helpAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                    <i class="bi bi-1-circle me-2"></i>系统介绍
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <p>美素佳儿DP-AI复盘系统是一款专为抖音直播电商设计的智能化数据分析工具，通过整合销售数据、主播排班与复盘文档，提供全方位的直播效果评估与优化建议。</p>
+                                    <p>系统特点：</p>
+                                    <ul>
+                                        <li><strong>数据整合:</strong> 自动匹配销售数据与主播排班信息</li>
+                                        <li><strong>AI分析:</strong> 智能评估主播表现，生成针对性建议</li>
+                                        <li><strong>效率提升:</strong> 快速定位问题，优化直播策略与话术</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    <i class="bi bi-2-circle me-2"></i>文件上传说明
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <p>系统需要上传三类数据文件：</p>
+                                    <ol>
+                                        <li><strong>销售数据:</strong> 包含订单详情的Excel文件，必须包含订单时间、产品名称、销售金额等信息</li>
+                                        <li><strong>主播排班表:</strong> 包含主播排班时间段的Excel文件，需包含日期、时间段、主播名称等信息</li>
+                                        <li><strong>主播月度资料:</strong> 包含主播历史表现和属性数据的Excel文件（可选）</li>
+                                    </ol>
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle me-2"></i>您可以通过点击上传区域或直接拖放文件到相应区域进行上传
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    <i class="bi bi-3-circle me-2"></i>功能指南
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h5 class="text-primary">基础功能</h5>
+                                            <ul>
+                                                <li><strong>数据匹配:</strong> 自动关联销售订单与主播时间段</li>
+                                                <li><strong>销售分析:</strong> 生成各类数据统计图表和指标</li>
+                                                <li><strong>主播绩效:</strong> 评估主播销售情况和转化能力</li>
+                                                <li><strong>导出结果:</strong> 将分析结果导出为Excel文件</li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h5 class="text-primary">高级功能</h5>
+                                            <ul>
+                                                <li><strong>AI智能点评:</strong> 生成主播表现评价和建议</li>
+                                                <li><strong>效率分析:</strong> 评估不同时间段和排班模式的效果</li>
+                                                <li><strong>话术优化:</strong> 提供针对性的话术改进建议</li>
+                                                <li><strong>品类建议:</strong> 优化主播与产品类目的匹配</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFour">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                    <i class="bi bi-4-circle me-2"></i>常见问题
+                                </button>
+                            </h2>
+                            <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#helpAccordion">
+                                <div class="accordion-body">
+                                    <div class="faq-item mb-3">
+                                        <h6 class="text-primary">Q: 系统支持哪些格式的文件?</h6>
+                                        <p>A: 目前系统支持Excel格式的文件（.xlsx和.xls）。</p>
+                                    </div>
+                                    <div class="faq-item mb-3">
+                                        <h6 class="text-primary">Q: 匹配率不高怎么解决?</h6>
+                                        <p>A: 请确保销售数据中的时间格式正确，并与排班表中的时间段有重叠。您也可以在系统设置中调整匹配的时间容差。</p>
+                                    </div>
+                                    <div class="faq-item mb-3">
+                                        <h6 class="text-primary">Q: 如何使用AI分析功能?</h6>
+                                        <p>A: 上传并分析数据后，点击"AI智能点评"标签页，然后点击"开始AI分析"按钮即可启动AI分析流程。</p>
+                                    </div>
+                                    <div class="faq-item">
+                                        <h6 class="text-primary">Q: 是否支持批量导出所有主播的分析结果?</h6>
+                                        <p>A: 是的，在AI分析完成后，您可以使用"导出结果"按钮将所有主播的分析结果导出为一个完整的报告。</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <a href="#" class="btn btn-primary" id="download-manual">下载完整手册</a>
                 </div>
             </div>
         </div>

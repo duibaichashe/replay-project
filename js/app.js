@@ -64,6 +64,64 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('已为导出按钮添加事件监听器');
     }
     
+    // 添加帮助手册下载功能
+    const downloadManualBtn = document.getElementById('download-manual');
+    if (downloadManualBtn) {
+        downloadManualBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showNotification('正在准备下载帮助手册...', 'info');
+            
+            // 创建一个简单的帮助文档内容
+            const manualContent = 
+            `# 美素佳儿DP-AI复盘系统使用手册
+            
+## 系统介绍
+美素佳儿DP-AI复盘系统是一款专为抖音直播电商设计的智能化数据分析工具，通过整合销售数据、主播排班与复盘文档，提供全方位的直播效果评估与优化建议。
+
+## 基本功能
+1. 销售数据与主播排班自动匹配
+2. 销售数据多维度统计分析
+3. 主播绩效评估与可视化展示
+4. AI智能话术与策略建议
+
+## 使用流程
+1. 上传销售数据Excel文件
+2. 上传主播排班表Excel文件
+3. (可选) 上传主播月度资料Excel文件
+4. 点击"开始分析"按钮进行数据处理
+5. 查看"匹配结果"、"数据分析"和"AI智能点评"
+6. 导出分析结果或AI建议
+
+## 文件格式要求
+- 销售数据：包含订单ID、产品名称、销售金额、下单时间等字段
+- 主播排班表：包含日期、时间段、主播姓名等字段
+- 主播月度资料：包含主播姓名、历史业绩、粉丝数等字段
+
+## 联系与支持
+如需技术支持或有任何问题，请联系系统管理员。
+            `;
+            
+            // 创建Blob对象
+            const blob = new Blob([manualContent], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            
+            // 创建下载链接
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '美素佳儿DP-AI复盘系统使用手册.txt';
+            document.body.appendChild(a);
+            a.click();
+            
+            // 清理
+            setTimeout(function() {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                showNotification('帮助手册已下载', 'success');
+            }, 100);
+        });
+        console.log('已为帮助手册下载按钮添加事件监听器');
+    }
+    
     // 在页面加载完成后立即修复模态框无障碍问题
     fixModalAriaAttributes();
     
@@ -6025,4 +6083,53 @@ function bindScrollEvents() {
             }
         });
     });
+}
+
+// 显示通知消息
+function showNotification(message, type = 'info') {
+    // 检查是否已存在通知容器
+    let notificationContainer = document.getElementById('notification-container');
+    
+    if (!notificationContainer) {
+        // 创建通知容器
+        notificationContainer = document.createElement('div');
+        notificationContainer.id = 'notification-container';
+        notificationContainer.style.position = 'fixed';
+        notificationContainer.style.bottom = '20px';
+        notificationContainer.style.right = '20px';
+        notificationContainer.style.zIndex = '9999';
+        document.body.appendChild(notificationContainer);
+    }
+    
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} notification`;
+    notification.style.minWidth = '250px';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+    notification.style.marginBottom = '10px';
+    notification.style.animation = 'fadeIn 0.5s';
+    
+    // 添加通知内容
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'danger' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+            <span>${message}</span>
+            <button type="button" class="btn-close ms-auto" onclick="this.parentElement.parentElement.remove()"></button>
+        </div>
+    `;
+    
+    // 添加通知到容器
+    notificationContainer.appendChild(notification);
+    
+    // 自动移除通知
+    setTimeout(() => {
+        notification.style.animation = 'fadeOut 0.5s';
+        setTimeout(() => {
+            if (notification.parentElement) {
+                notification.parentElement.removeChild(notification);
+            }
+        }, 450);
+    }, 4000);
+    
+    return notification;
 }
