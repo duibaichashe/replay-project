@@ -12,6 +12,13 @@ let aiSettings = {
     useDemoMode: true
 };
 
+// 系统设置
+let systemSettings = {
+    timeTolerance: 15,
+    itemsPerPage: 10,
+    autoSaveResults: true
+};
+
 // AI分析结果
 let aiAnalysisResults = {};
 
@@ -28,20 +35,20 @@ document.addEventListener('DOMContentLoaded', function() {
  * 初始化Bootstrap组件
  */
 function initBootstrapComponents() {
-    // 直接初始化AI设置模态框
-    const settingsModalElement = document.getElementById('ai-settings-modal');
+    // 初始化系统设置模态框
+    const settingsModalElement = document.getElementById('settings-modal');
     if (settingsModalElement) {
         // 为保存按钮添加事件监听器
-        const saveButton = document.getElementById('save-ai-settings');
+        const saveButton = document.getElementById('save-settings');
         if (saveButton) {
             // 移除现有事件监听器以避免重复
-            saveButton.removeEventListener('click', saveAISettings);
-            saveButton.addEventListener('click', saveAISettings);
+            saveButton.removeEventListener('click', saveSettings);
+            saveButton.addEventListener('click', saveSettings);
         }
         
         // 监听模态框显示事件
         settingsModalElement.addEventListener('shown.bs.modal', function() {
-            console.log('AI设置模态框已显示');
+            console.log('系统设置模态框已显示');
         });
     }
 }
@@ -52,10 +59,10 @@ function initBootstrapComponents() {
 function initAIFeatures() {
     // 注意：此功能需要在基础分析完成后才能使用
     // 加载AI设置
-    loadAISettings();
+    loadSettings();
     
     // 绑定AI设置表单事件
-    bindAISettingsEvents();
+    bindSettingsEvents();
     
     // 绑定AI分析按钮事件
     bindAIAnalysisEvents();
@@ -64,16 +71,16 @@ function initAIFeatures() {
 }
 
 /**
- * 加载AI设置
+ * 加载设置
  */
-function loadAISettings() {
+function loadSettings() {
     try {
-        // 从本地存储加载设置
-        const savedSettings = localStorage.getItem('aiSettings');
-        if (savedSettings) {
-            aiSettings = JSON.parse(savedSettings);
+        // 从本地存储加载AI设置
+        const savedAISettings = localStorage.getItem('aiSettings');
+        if (savedAISettings) {
+            aiSettings = JSON.parse(savedAISettings);
             
-            // 填充设置表单
+            // 填充AI设置表单
             document.getElementById('ai-api-url').value = aiSettings.apiUrl || '';
             document.getElementById('ai-api-key').value = aiSettings.apiKey || '';
             document.getElementById('ai-model').value = aiSettings.model || 'gpt-3.5-turbo';
@@ -97,18 +104,28 @@ function loadAISettings() {
             
             console.log('已加载AI设置:', aiSettings);
         }
+        
+        // 从本地存储加载系统设置
+        const savedSystemSettings = localStorage.getItem('systemSettings');
+        if (savedSystemSettings) {
+            systemSettings = JSON.parse(savedSystemSettings);
+            
+            // 填充系统设置表单
+            document.getElementById('time-tolerance').value = systemSettings.timeTolerance || 15;
+            document.getElementById('items-per-page').value = systemSettings.itemsPerPage || 10;
+            document.getElementById('auto-save-results').checked = systemSettings.autoSaveResults !== false;
+            
+            console.log('已加载系统设置:', systemSettings);
+        }
     } catch (error) {
-        console.error('加载AI设置时出错:', error);
+        console.error('加载设置时出错:', error);
     }
 }
 
 /**
- * 绑定AI设置表单事件
+ * 绑定设置表单事件
  */
-function bindAISettingsEvents() {
-    // 注意：保存按钮的事件处理已经在initBootstrapComponents中设置，此处不再重复添加
-    // 防止事件监听器重复导致的堆栈溢出
-    
+function bindSettingsEvents() {
     // 模型选择变更
     const modelSelect = document.getElementById('ai-model');
     if (modelSelect) {
@@ -140,86 +157,87 @@ function bindAISettingsEvents() {
     if (testApiButton) {
         testApiButton.addEventListener('click', testAPIConnection);
     }
+    
+    // 每页显示条数设置变更
+    const itemsPerPageSelect = document.getElementById('items-per-page');
+    if (itemsPerPageSelect) {
+        itemsPerPageSelect.addEventListener('change', function() {
+            // 这里可以添加预览效果
+            console.log('每页显示条数变更为:', this.value);
+        });
+    }
 }
 
 /**
- * 测试API连接
+ * 保存所有设置
  */
-async function testAPIConnection() {
-    const resultContainer = document.getElementById('api-test-result');
-    resultContainer.innerHTML = '<div class="alert alert-info">正在测试API连接...</div>';
-    
+function saveSettings() {
     try {
+        // 保存AI设置
         const apiUrl = document.getElementById('ai-api-url').value.trim();
         const apiKey = document.getElementById('ai-api-key').value.trim();
-        const modelSelect = document.getElementById('ai-model');
+        const model = document.getElementById('ai-model').value;
+        const useDemoMode = document.getElementById('use-demo-mode').checked;
         
-        // 调试输出
-        console.log('API URL:', apiUrl);
-        console.log('API Key:', apiKey ? '已设置' : '未设置');
-        
-        if (!apiUrl || !apiKey) {
-            resultContainer.innerHTML = '<div class="alert alert-danger">请填写API URL和密钥</div>';
-            return;
-        }
-        
-        // 获取正确的模型名称
-        let modelName = modelSelect.value;
-        if (modelName === 'custom') {
-            // 使用自定义模型输入框的值
-            const customModelInput = document.getElementById('custom-model');
-            if (customModelInput && customModelInput.value.trim()) {
-                modelName = customModelInput.value.trim();
-            } else {
-                resultContainer.innerHTML = '<div class="alert alert-danger">请填写自定义模型名称</div>';
-                return;
-            }
-        }
-        
-        console.log('测试API连接，使用模型:', modelName);
-        
-        // 创建请求数据
-        const requestData = {
-            model: modelName,
-            messages: [
-                {role: "system", content: "你是人工智能助手。"},
-                {role: "user", content: "测试API连接，请回复'连接成功'。"}
-            ],
-            max_tokens: 20
+        // 更新AI设置
+        aiSettings = {
+            apiUrl,
+            apiKey,
+            model,
+            useDemoMode
         };
         
-        console.log('发送API请求数据:', JSON.stringify(requestData));
-        
-        // 简单的测试请求
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        console.log('API响应状态:', response.status);
-        
-        if (response.ok) {
-            const jsonResponse = await response.json();
-            console.log('API响应数据:', jsonResponse);
-            resultContainer.innerHTML = '<div class="alert alert-success">API连接成功！</div>';
-        } else {
-            let errorMessage = '';
-            try {
-                const errorData = await response.json();
-                console.error('API错误响应:', errorData);
-                errorMessage = errorData.error?.message || response.statusText;
-            } catch (e) {
-                errorMessage = `HTTP错误: ${response.status} ${response.statusText}`;
+        // 处理自定义模型
+        if (model === 'custom') {
+            const customModel = document.getElementById('custom-model').value.trim();
+            if (customModel) {
+                aiSettings.customModel = customModel;
             }
-            resultContainer.innerHTML = `<div class="alert alert-danger">API连接失败: ${errorMessage}</div>`;
         }
+        
+        // 保存到本地存储
+        localStorage.setItem('aiSettings', JSON.stringify(aiSettings));
+        
+        // 保存系统设置
+        const timeTolerance = parseInt(document.getElementById('time-tolerance').value) || 15;
+        const itemsPerPage = parseInt(document.getElementById('items-per-page').value) || 10;
+        const autoSaveResults = document.getElementById('auto-save-results').checked;
+        
+        // 更新系统设置
+        systemSettings = {
+            timeTolerance,
+            itemsPerPage,
+            autoSaveResults
+        };
+        
+        // 保存到本地存储
+        localStorage.setItem('systemSettings', JSON.stringify(systemSettings));
+        
+        // 更新全局变量
+        if (window.itemsPerPage !== undefined) {
+            window.itemsPerPage = itemsPerPage;
+            // 如果当前在查看结果页面，可以刷新分页
+            if (window.matchedResults && window.matchedResults.length > 0) {
+                // 如果存在刷新分页的函数则调用
+                if (typeof window.refreshPagination === 'function') {
+                    window.refreshPagination();
+                }
+            }
+        }
+        
+        // 关闭模态框
+        const modal = bootstrap.Modal.getInstance(document.getElementById('settings-modal'));
+        if (modal) {
+            modal.hide();
+        }
+        
+        // 显示保存成功消息
+        showNotice('success', '设置已保存');
+        
+        console.log('设置已保存:', { aiSettings, systemSettings });
     } catch (error) {
-        console.error('测试API连接时出错:', error);
-        resultContainer.innerHTML = `<div class="alert alert-danger">API连接错误: ${error.message}</div>`;
+        console.error('保存设置时出错:', error);
+        showNotice('danger', '保存设置失败: ' + error.message);
     }
 }
 
@@ -2002,81 +2020,41 @@ function extractSaleInfo(saleRow) {
  * 工具函数：显示通知消息
  */
 function showNotice(type, message, duration = 3000) {
-    console.log('显示通知:', type, message);
+    // 检查是否已存在通知容器
+    let noticeContainer = document.getElementById('notice-container');
     
-    // 设置标记防止递归调用
-    if (window._showingNotice) {
-        console.warn('防止递归调用showNotice');
-        return;
+    // 如果不存在，创建一个
+    if (!noticeContainer) {
+        noticeContainer = document.createElement('div');
+        noticeContainer.id = 'notice-container';
+        noticeContainer.style.position = 'fixed';
+        noticeContainer.style.top = '20px';
+        noticeContainer.style.right = '20px';
+        noticeContainer.style.zIndex = '9999';
+        document.body.appendChild(noticeContainer);
     }
     
-    try {
-        window._showingNotice = true;
-        
-        // 首先尝试使用app.js中的showNotice函数，但只在它不是当前函数的情况下
-        if (typeof window.showNotice === 'function' && window.showNotice !== showNotice) {
-            window.showNotice(type, message, duration);
-            return;
-        }
-        
-        // 检查是否已有通知容器
-        let container = document.getElementById('notification-container');
-        
-        // 如果没有容器，创建一个
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'notification-container';
-            container.style.position = 'fixed';
-            container.style.top = '20px';
-            container.style.right = '20px';
-            container.style.zIndex = '9999';
-            document.body.appendChild(container);
-        }
-        
-        // 创建通知元素
-        const notification = document.createElement('div');
-        notification.className = `alert alert-${type} alert-dismissible fade show`;
-        notification.role = 'alert';
-        notification.style.minWidth = '250px';
-        notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-        notification.style.marginBottom = '10px';
-        
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        `;
-        
-        // 添加到容器
-        container.appendChild(notification);
-        
-        // 添加点击关闭事件
-        const closeButton = notification.querySelector('.btn-close');
-        if (closeButton) {
-            closeButton.addEventListener('click', function() {
-                container.removeChild(notification);
-            });
-        }
-        
-        // 设置自动关闭
+    // 创建通知元素
+    const notice = document.createElement('div');
+    notice.className = `alert alert-${type} alert-dismissible fade show`;
+    notice.role = 'alert';
+    notice.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // 添加到容器
+    noticeContainer.appendChild(notice);
+    
+    // 添加定时器自动关闭
+    setTimeout(() => {
+        notice.classList.remove('show');
         setTimeout(() => {
-            if (notification.parentNode === container) {
-                notification.classList.remove('show');
-                setTimeout(() => {
-                    if (notification.parentNode === container) {
-                        container.removeChild(notification);
-                    }
-                }, 150);
+            if (notice.parentNode) {
+                notice.parentNode.removeChild(notice);
             }
-        }, duration);
-        
-        // 如果是一个重要的消息，也在控制台打印
-        if (type === 'success' || type === 'danger') {
-            console.log(`[通知] ${message}`);
-        }
-    } finally {
-        // 确保清除标记
-        window._showingNotice = false;
-    }
+        }, 150);
+    }, duration);
 }
 
 /**
@@ -2195,54 +2173,100 @@ function closeModal(modalId) {
 }
 
 /**
- * 保存AI设置
+ * 测试API连接
  */
-function saveAISettings() {
+async function testAPIConnection() {
+    const resultContainer = document.getElementById('api-test-result');
+    resultContainer.innerHTML = '<div class="alert alert-info">正在测试API连接...</div>';
+    
     try {
-        console.log('保存AI设置...');
-        // 获取表单值
         const apiUrl = document.getElementById('ai-api-url').value.trim();
         const apiKey = document.getElementById('ai-api-key').value.trim();
-        const model = document.getElementById('ai-model').value;
-        const useDemoMode = document.getElementById('use-demo-mode').checked;
+        const modelSelect = document.getElementById('ai-model');
         
-        // 构建设置对象
-        const settings = {
-            apiUrl,
-            apiKey,
-            model,
-            useDemoMode
+        // 调试输出
+        console.log('API URL:', apiUrl);
+        console.log('API Key:', apiKey ? '已设置' : '未设置');
+        
+        if (!apiUrl || !apiKey) {
+            resultContainer.innerHTML = '<div class="alert alert-danger">请填写API URL和密钥</div>';
+            return;
+        }
+        
+        // 获取正确的模型名称
+        let modelName = modelSelect.value;
+        if (modelName === 'custom') {
+            // 使用自定义模型输入框的值
+            const customModelInput = document.getElementById('custom-model');
+            if (customModelInput && customModelInput.value.trim()) {
+                modelName = customModelInput.value.trim();
+            } else {
+                resultContainer.innerHTML = '<div class="alert alert-danger">请填写自定义模型名称</div>';
+                return;
+            }
+        }
+        
+        console.log('测试API连接，使用模型:', modelName);
+        
+        // 创建请求数据
+        const requestData = {
+            model: modelName,
+            messages: [
+                {role: "system", content: "你是人工智能助手。"},
+                {role: "user", content: "测试API连接，请回复'连接成功'。"}
+            ],
+            max_tokens: 20
         };
         
-        // 如果选择自定义模型，保存自定义模型名称
-        if (model === 'custom') {
-            settings.customModel = document.getElementById('custom-model').value.trim();
-        }
+        console.log('发送API请求数据:', JSON.stringify(requestData));
         
-        // 验证设置
-        if (!useDemoMode) {
-            if (!apiUrl) {
-                alert('请输入API接口地址');
-                return;
+        // 简单的测试请求
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        console.log('API响应状态:', response.status);
+        
+        if (response.ok) {
+            const jsonResponse = await response.json();
+            console.log('API响应数据:', jsonResponse);
+            resultContainer.innerHTML = '<div class="alert alert-success">API连接成功！</div>';
+        } else {
+            let errorMessage = '';
+            try {
+                const errorData = await response.json();
+                console.error('API错误响应:', errorData);
+                errorMessage = errorData.error?.message || response.statusText;
+            } catch (e) {
+                errorMessage = `HTTP错误: ${response.status} ${response.statusText}`;
             }
-            if (!apiKey) {
-                alert('请输入API密钥');
-                return;
-            }
+            resultContainer.innerHTML = `<div class="alert alert-danger">API连接失败: ${errorMessage}</div>`;
         }
-        
-        // 保存设置
-        aiSettings = settings;
-        localStorage.setItem('aiSettings', JSON.stringify(settings));
-        
-        // 显示成功提示
-        showNotice('success', 'AI设置已保存');
-        console.log('AI设置已保存:', settings);
-        
-        // 关闭模态框
-        closeModal('ai-settings-modal');
     } catch (error) {
-        console.error('保存AI设置时出错:', error);
-        alert('保存设置时出错: ' + error.message);
+        console.error('测试API连接时出错:', error);
+        resultContainer.innerHTML = `<div class="alert alert-danger">API连接错误: ${error.message}</div>`;
+    }
+}
+
+/**
+ * 关闭模态框
+ * @param {string} modalId 模态框ID
+ */
+function closeModal(modalId) {
+    try {
+        const modalEl = document.getElementById(modalId);
+        if (modalEl) {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) {
+                modal.hide();
+            }
+        }
+    } catch (error) {
+        console.error('关闭模态框出错:', error);
     }
 }

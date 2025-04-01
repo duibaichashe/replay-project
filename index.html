@@ -25,6 +25,11 @@
                         <a class="nav-link active" href="#"><i class="bi bi-house-door"></i> 首页</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#settings-modal">
+                            <i class="bi bi-gear"></i> 设置
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#help-modal">
                             <i class="bi bi-question-circle"></i> 帮助
                         </a>
@@ -381,11 +386,6 @@
                                         <div class="col-12">
                                             <div class="d-flex justify-content-between align-items-center mb-3">
                                                 <h5><i class="bi bi-robot me-2"></i>AI智能主播点评</h5>
-                                                <div>
-                                                    <button class="btn btn-sm btn-outline-primary" id="ai-settings-btn" data-bs-toggle="modal" data-bs-target="#ai-settings-modal">
-                                                        <i class="bi bi-gear me-1"></i>AI设置
-                                                    </button>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -492,61 +492,109 @@
         </div>
     </div>
 
-    <!-- AI设置模态框 -->
-    <div class="modal fade" id="ai-settings-modal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+    <!-- 系统设置模态框 -->
+    <div class="modal fade" id="settings-modal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="bi bi-gear me-2"></i>AI接口设置</h5>
+                    <h5 class="modal-title"><i class="bi bi-gear me-2"></i>系统设置</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i>
-                        设置AI接口信息或使用演示模式体验功能
-                    </div>
+                    <!-- 设置选项卡 -->
+                    <ul class="nav nav-tabs mb-4" id="settingsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="ai-settings-tab" data-bs-toggle="tab" data-bs-target="#ai-settings-content" type="button" role="tab">
+                                <i class="bi bi-robot me-2"></i>AI设置
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="system-settings-tab" data-bs-toggle="tab" data-bs-target="#system-settings-content" type="button" role="tab">
+                                <i class="bi bi-sliders me-2"></i>系统参数
+                            </button>
+                        </li>
+                    </ul>
                     
-                    <div class="mb-3">
-                        <label for="ai-api-url" class="form-label">API接口地址</label>
-                        <input type="url" class="form-control" id="ai-api-url" placeholder="输入API URL，例如：https://api.openai.com/v1/chat/completions">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="ai-api-key" class="form-label">API密钥</label>
-                        <input type="password" class="form-control" id="ai-api-key" placeholder="输入您的API密钥">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="ai-model" class="form-label">AI模型</label>
-                        <select class="form-select" id="ai-model">
-                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            <option value="gpt-4">GPT-4</option>
-                            <option value="claude-3-opus">Claude 3 Opus</option>
-                            <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                            <option value="custom">自定义</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3 d-none" id="custom-model-container">
-                        <label for="custom-model" class="form-label">自定义模型名称</label>
-                        <input type="text" class="form-control" id="custom-model" placeholder="输入模型名称">
-                    </div>
-                    
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="use-demo-mode" checked>
-                        <label class="form-check-label" for="use-demo-mode">使用演示模式 (无需真实API)</label>
-                    </div>
-                    
-                    <div class="mb-3 d-none" id="api-test-container">
-                        <button class="btn btn-sm btn-outline-primary" id="test-api-connection">
-                            <i class="bi bi-lightning me-1"></i>测试API连接
-                        </button>
-                        <div id="api-test-result" class="mt-2"></div>
+                    <div class="tab-content" id="settingsTabsContent">
+                        <!-- AI设置内容 -->
+                        <div class="tab-pane fade show active" id="ai-settings-content" role="tabpanel">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                设置AI接口信息或使用演示模式体验功能
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ai-api-url" class="form-label">API接口地址</label>
+                                <input type="url" class="form-control" id="ai-api-url" placeholder="输入API URL，例如：https://api.openai.com/v1/chat/completions">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ai-api-key" class="form-label">API密钥</label>
+                                <input type="password" class="form-control" id="ai-api-key" placeholder="输入您的API密钥">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="ai-model" class="form-label">AI模型</label>
+                                <select class="form-select" id="ai-model">
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                                    <option value="gpt-4">GPT-4</option>
+                                    <option value="claude-3-opus">Claude 3 Opus</option>
+                                    <option value="claude-3-sonnet">Claude 3 Sonnet</option>
+                                    <option value="custom">自定义</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3 d-none" id="custom-model-container">
+                                <label for="custom-model" class="form-label">自定义模型名称</label>
+                                <input type="text" class="form-control" id="custom-model" placeholder="输入模型名称">
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="use-demo-mode" checked>
+                                <label class="form-check-label" for="use-demo-mode">使用演示模式 (无需真实API)</label>
+                            </div>
+                            
+                            <div class="mb-3 d-none" id="api-test-container">
+                                <button class="btn btn-sm btn-outline-primary" id="test-api-connection">
+                                    <i class="bi bi-lightning me-1"></i>测试API连接
+                                </button>
+                                <div id="api-test-result" class="mt-2"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 系统参数设置内容 -->
+                        <div class="tab-pane fade" id="system-settings-content" role="tabpanel">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle me-2"></i>
+                                调整系统参数以优化匹配效果和分析性能
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="time-tolerance" class="form-label">时间匹配容差 (分钟)</label>
+                                <input type="number" class="form-control" id="time-tolerance" min="0" max="60" value="15">
+                                <div class="form-text">订单时间与主播排班时间段的匹配容差</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="items-per-page" class="form-label">每页显示条数</label>
+                                <select class="form-select" id="items-per-page">
+                                    <option value="10">10条/页</option>
+                                    <option value="20">20条/页</option>
+                                    <option value="50">50条/页</option>
+                                    <option value="100">100条/页</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="auto-save-results" checked>
+                                <label class="form-check-label" for="auto-save-results">自动保存分析结果</label>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-primary" id="save-ai-settings">保存设置</button>
+                    <button type="button" class="btn btn-primary" id="save-settings">保存设置</button>
                 </div>
             </div>
         </div>
