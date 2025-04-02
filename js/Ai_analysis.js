@@ -1162,6 +1162,9 @@ function displayAnalysisResult(result) {
     // 清空容器
     container.innerHTML = '';
     
+    // 预处理分析内容，优化显示效果
+    let analysisContent = result.analysis || '';
+    
     // 创建结果HTML
     const resultHtml = `
         <div class="analysis-result p-3">
@@ -1180,7 +1183,7 @@ function displayAnalysisResult(result) {
             <div class="card mb-3">
                 <div class="card-header">详细分析</div>
                 <div class="card-body analysis-content">
-                    ${renderMarkdown(result.analysis)}
+                    ${renderMarkdown(analysisContent)}
                 </div>
             </div>
             
@@ -1222,6 +1225,23 @@ function displayAnalysisResult(result) {
             startAIAnalysis();
         });
     }
+
+    // 添加额外的初始化逻辑，确保内容正确显示
+    setTimeout(() => {
+        // 检查并修复可能的显示问题
+        const contentDivs = document.querySelectorAll('.analysis-content');
+        contentDivs.forEach(div => {
+            // 如果内容中有未处理的转义字符，尝试再次处理
+            if (div.innerHTML.includes('\\n')) {
+                const fixedContent = div.innerHTML
+                    .replace(/\\n/g, '<br>')
+                    .replace(/\\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\');
+                div.innerHTML = fixedContent;
+            }
+        });
+    }, 100);
 }
 
 /**
@@ -1237,6 +1257,9 @@ function showSingleAnchorResult(result) {
     
     // 清空现有内容
     container.innerHTML = '';
+    
+    // 预处理分析内容，优化显示效果
+    let analysisContent = result.analysis || '';
     
     // 创建单个主播分析结果的UI
     const resultHtml = `
@@ -1259,7 +1282,7 @@ function showSingleAnchorResult(result) {
                 </div>
                 <div class="card-body">
                     <div class="analysis-content">
-                        ${renderMarkdown(result.analysis)}
+                        ${renderMarkdown(analysisContent)}
                     </div>
                 </div>
             </div>
@@ -1281,6 +1304,23 @@ function showSingleAnchorResult(result) {
             startAIAnalysis();
         });
     }
+
+    // 添加额外的初始化逻辑，确保内容正确显示
+    setTimeout(() => {
+        // 检查并修复可能的显示问题
+        const contentDivs = document.querySelectorAll('.analysis-content');
+        contentDivs.forEach(div => {
+            // 如果内容中有未处理的转义字符，尝试再次处理
+            if (div.innerHTML.includes('\\n')) {
+                const fixedContent = div.innerHTML
+                    .replace(/\\n/g, '<br>')
+                    .replace(/\\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+                    .replace(/\\"/g, '"')
+                    .replace(/\\\\/g, '\\');
+                div.innerHTML = fixedContent;
+            }
+        });
+    }, 100);
 }
 
 /**
@@ -1348,7 +1388,12 @@ function generateAIPrompt(anchorName, data) {
     promptContent += '  "analysis": "完整的分析内容，包括表现评估、优势、不足和改进建议，使用Markdown格式"\n';
     promptContent += "}\n";
     promptContent += "```\n";
-    promptContent += "注意：返回的必须是有效的JSON格式，不要包含任何额外的标记或文本！返回内容必须可以直接通过JSON.parse()方法解析。\n";
+    promptContent += "严格注意：\n";
+    promptContent += "1. 返回的必须是有效的JSON格式，不要包含任何额外的标记或文本\n";
+    promptContent += "2. 不要在JSON外添加任何说明、前缀或后缀\n";
+    promptContent += "3. analysis字段中的Markdown格式（如**粗体**，*斜体*等）在JSON中必须正确转义引号和反斜杠\n";
+    promptContent += "4. 确保JSON中没有未转义的引号或控制字符\n";
+    promptContent += "5. 返回内容必须可以直接通过JSON.parse()方法解析，无需任何预处理\n";
     
     // 创建最终提示对象
     const finalPrompt = {
@@ -1382,7 +1427,7 @@ async function callAIAPI(prompt) {
             messages: [
                 {
                     role: "system",
-                    content: "你是一位拥有20年资深经验的高级直播运营专家，擅长分析主播的销售业绩、直播表现和运营策略。你的分析深入专业，建议具有可操作性和针对性。请基于数据提供准确、专业的分析和实用建议。"
+                    content: "你是一位拥有20年资深经验的高级直播运营专家，擅长分析主播的销售业绩、直播表现和运营策略。你的分析深入专业，建议具有可操作性和针对性。请基于数据提供准确、专业的分析和实用建议。必须以有效的JSON格式返回结果。"
                 },
                 prompt
             ],
@@ -1393,6 +1438,9 @@ async function callAIAPI(prompt) {
         // 根据模型决定是否添加response_format (仅对某些模型添加)
         // 注意：只有部分GPT模型支持response_format，不要给Claude模型添加此参数
         if (modelName.includes('gpt-4') || modelName.includes('gpt-3.5-turbo')) {
+            // 添加响应格式，要求返回JSON
+            requestBody.response_format = { "type": "json_object" };
+            
             // 添加函数调用作为更安全的JSON返回选项
             requestBody.functions = [{
                 name: "analysis_result",
@@ -1453,7 +1501,7 @@ async function callAIAPI(prompt) {
         // 提取AI回复内容
         let content = result.choices?.[0]?.message?.content;
         
-        // 检查是否是函数调用结果
+        // 处理函数调用结果
         if (result.choices?.[0]?.message?.function_call) {
             try {
                 // 如果是函数调用，直接提取参数JSON
@@ -1462,48 +1510,165 @@ async function callAIAPI(prompt) {
                 return JSON.parse(functionCallArgs);
             } catch (e) {
                 console.warn('无法解析函数调用参数:', e);
+                // 如果函数调用参数解析失败，继续尝试处理content
             }
         }
         
-        // 如果不是函数调用或解析失败，尝试直接处理content
-        if (content) {
-            // 尝试解析JSON响应 - 处理可能的格式问题
-            try {
-                // 有时API可能返回```json 包裹的内容，尝试提取
-                if (content.includes('```json')) {
-                    const match = content.match(/```json\s*([\s\S]*?)\s*```/);
-                    if (match && match[1]) {
-                        content = match[1].trim();
-                        console.log('从Markdown代码块提取的JSON:', content);
-                    }
-                }
-                
-                // 尝试解析JSON
-                return JSON.parse(content);
-            } catch (e) {
-                console.warn('无法解析AI返回的JSON数据，尝试其他格式:', e);
-                console.log('尝试解析的原始内容:', content);
-                
-                // 尝试提取summary和analysis
-                const summaryMatch = content.match(/summary[：:]\s*(.*?)(?=\n|$)/i);
-                const summary = summaryMatch ? summaryMatch[1].trim() : '无法提取摘要';
-                
-                // 如果无法解析为JSON，处理为纯文本内容
-                return {
-                    summary: summary,
-                    analysis: content
-                };
+        // 处理文本内容
+        if (!content) {
+            console.warn('API响应中没有找到content字段');
+            return {
+                summary: "API返回的数据无法解析",
+                analysis: "无法从API响应中提取有效内容。请检查API设置并重试。"
+            };
+        }
+        
+        // 尝试从Markdown格式中提取JSON
+        if (content.includes('```json')) {
+            const match = content.match(/```json\s*([\s\S]*?)\s*```/);
+            if (match && match[1]) {
+                content = match[1].trim();
+                console.log('从Markdown代码块提取的JSON:', content);
             }
         }
         
-        // 如果没有content字段，返回默认内容
-        return {
-            summary: "API返回的数据无法解析",
-            analysis: "无法从API响应中提取有效内容。请检查API设置并重试。"
-        };
+        // 清理并解析JSON
+        return parseAndSanitizeContent(content);
+        
     } catch (error) {
         console.error('调用AI API时出错:', error);
         throw error;
+    }
+}
+
+/**
+ * 清理并解析内容为JSON，处理各种格式问题
+ * @param {string} content - 原始内容
+ * @returns {Object} - 解析后的对象
+ */
+function parseAndSanitizeContent(content) {
+    try {
+        // 如果内容为空，返回默认值
+        if (!content) {
+            console.warn('解析的内容为空');
+            return {
+                summary: "无法获取有效分析",
+                analysis: "API返回的数据为空或无法解析。"
+            };
+        }
+
+        // 预处理JSON字符串，处理常见问题
+        let cleanedContent = content
+            // 移除开头和结尾的反引号
+            .replace(/^```json\s*/, '')
+            .replace(/```$/, '')
+            // 移除JSON字符串开头可能存在的BOM
+            .replace(/^\s*\u{FEFF}/u, '')
+            // 移除开头结尾的额外空白字符
+            .trim();
+
+        // 尝试直接解析JSON
+        let result;
+        try {
+            result = JSON.parse(cleanedContent);
+            console.log('成功直接解析JSON');
+        } catch (jsonError) {
+            // 如果直接解析失败，尝试使用更强大的修复方法
+            console.warn('直接JSON解析失败，尝试修复格式问题:', jsonError);
+            
+            // 修复常见的JSON错误
+            cleanedContent = cleanedContent
+                // 修复字符串中未转义的引号
+                .replace(/(?<!\\)\\(?!["\\])/g, '\\\\')
+                // 修复斜杠的转义问题
+                .replace(/\\\\/g, '\\')
+                // 修复未转义的引号问题
+                .replace(/"([^"]*)(?<!\\)"([^"]*)"(?!")/g, '"$1\\"$2"')
+                // 替换控制字符
+                .replace(/[\x00-\x1F\x7F]/g, '')
+                // 确保所有属性名都有引号
+                .replace(/(\s*)([a-zA-Z0-9_]+)(\s*):/g, '$1"$2"$3:');
+            
+            // 再次尝试解析
+            try {
+                result = JSON.parse(cleanedContent);
+                console.log('成功修复并解析JSON');
+            } catch (fixError) {
+                console.error('JSON修复失败:', fixError);
+                
+                // 如果仍然无法解析，构建一个临时结果对象
+                console.warn('构建临时结果对象');
+                
+                // 尝试提取summary和analysis
+                const summaryMatch = content.match(/"summary"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+                const analysisMatch = content.match(/"analysis"\s*:\s*"([^"]*(?:\\.[^"]*)*)"/);
+                
+                result = {
+                    summary: summaryMatch ? summaryMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : "无法解析分析摘要",
+                    analysis: analysisMatch ? analysisMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\') : "无法解析完整分析内容"
+                };
+            }
+        }
+
+        // 验证结果结构
+        if (!result || typeof result !== 'object') {
+            console.warn('解析结果不是有效对象');
+            return {
+                summary: "返回格式无效",
+                analysis: "API返回的数据不是有效的JSON对象。"
+            };
+        }
+
+        // 处理可能的function_call结构
+        if (result.function_call && result.function_call.arguments) {
+            try {
+                const args = JSON.parse(result.function_call.arguments);
+                console.log('从function_call中提取参数:', args);
+                result = args;
+            } catch (e) {
+                console.warn('无法解析function_call参数:', e);
+            }
+        }
+
+        // 确保包含必要的字段
+        if (!result.summary) {
+            result.summary = "未提供分析摘要";
+        }
+        
+        if (!result.analysis) {
+            result.analysis = "未提供详细分析";
+        }
+
+        // 清理内容中可能存在的转义问题
+        // 对于分析内容，保留一些特定的Markdown格式标记
+        result.summary = String(result.summary)
+            .replace(/\\n/g, ' ')
+            .replace(/\\t/g, ' ')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\')
+            .trim();
+
+        result.analysis = String(result.analysis)
+            // 保持换行标记，但确保它们是一致的格式
+            // 处理后，剩余的\n将在renderMarkdown函数中进一步处理
+            .replace(/\\n/g, '\n')
+            .replace(/\\t/g, '    ')
+            .replace(/\\"/g, '"')
+            .replace(/\\\\/g, '\\')
+            .trim();
+
+        console.log('清理后的内容:', {
+            summaryLength: result.summary.length,
+            analysisLength: result.analysis.length
+        });
+
+        return result;
+    } catch (error) {
+        console.error('解析内容时出错:', error);
+        return {
+            summary: "解析失败",
+            analysis: `无法解析API返回的内容: ${error.message}`
+        };
     }
 }
 
@@ -1780,35 +1945,140 @@ function showAnalysisDetailsModal(result) {
 function renderMarkdown(text) {
     if (!text) return '';
     
-    // 替换标题
-    text = text.replace(/## (.*?)$/gm, '<h4 class="mt-4">$1</h4>');
-    text = text.replace(/# (.*?)$/gm, '<h3 class="mt-4">$1</h3>');
-    
-    // 替换列表
-    text = text.replace(/^\d+\. (.*?)$/gm, '<li>$1</li>');
-    text = text.replace(/^- (.*?)$/gm, '<li>$1</li>');
-    
-    // 将连续的列表项包装在列表标签中
-    text = text.replace(/(<li>.*?<\/li>)+/g, function(match) {
-        return '<ul class="mb-3">' + match + '</ul>';
-    });
-    
-    // 替换加粗文本
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // 替换斜体文本
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // 替换换行符为段落
-    text = text.replace(/\n\n/g, '</p><p>');
-    
-    // 包装在段落标签中
-    text = '<p>' + text + '</p>';
-    
-    // 修复嵌套的段落标签
-    text = text.replace(/<p><\/p>/g, '');
-    
-    return text;
+    try {
+        // 预处理文本，处理潜在的格式问题
+        let processedText = String(text)
+            // 确保文本是字符串并替换非打印字符
+            .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '')
+            // 修复可能的多余空格
+            .replace(/\s+\n/g, '\n')
+            // 确保标题标记前有换行
+            .replace(/([^\n])#/g, '$1\n#');
+        
+        // 清理AI返回中常见的特殊标记
+        processedText = processedText
+            // 处理AI返回的编号列表 \n1. \n2. 等
+            .replace(/\\n(\d+)\./g, '<br>$1.')
+            // 处理换行标记
+            .replace(/\\n/g, '<br>')
+            // 处理\t制表符
+            .replace(/\\t/g, '&nbsp;&nbsp;&nbsp;&nbsp;')
+            // 处理markdown格式的列表\n- 项目 格式
+            .replace(/\\n\s*[-*]\s+/g, '<br>• ');
+
+        // 替换标题
+        processedText = processedText.replace(/### (.*?)$/gm, '<h5 class="mt-3">$1</h5>');
+        processedText = processedText.replace(/## (.*?)$/gm, '<h4 class="mt-4">$1</h4>');
+        processedText = processedText.replace(/# (.*?)$/gm, '<h3 class="mt-4">$1</h3>');
+        
+        // 替换有序和无序列表
+        processedText = processedText.replace(/^\d+\.\s+(.*?)$/gm, '<li>$1</li>');
+        processedText = processedText.replace(/^[*\-+•]\s+(.*?)$/gm, '<li>$1</li>');
+        
+        // 将连续的列表项包装在列表标签中
+        processedText = processedText.replace(/(<li>.*?<\/li>)+/g, function(match) {
+            // 检测是否包含有序列表项
+            if (match.includes('<li>1.') || match.includes('<li>1 ')) {
+                return '<ol class="mb-3">' + match + '</ol>';
+            } else {
+                return '<ul class="mb-3">' + match + '</ul>';
+            }
+        });
+        
+        // 替换加粗文本
+        processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        processedText = processedText.replace(/__(.*?)__/g, '<strong>$1</strong>');
+        
+        // 替换斜体文本
+        processedText = processedText.replace(/\*(.*?)\*/g, '<em>$1</em>');
+        processedText = processedText.replace(/_(.*?)_/g, '<em>$1</em>');
+        
+        // 替换代码块
+        processedText = processedText.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
+        processedText = processedText.replace(/`(.*?)`/g, '<code>$1</code>');
+        
+        // 处理代码中可能出现的类似\u00A5等Unicode转义序列
+        processedText = processedText.replace(/\\u([0-9a-fA-F]{4})/g, 
+            (match, p1) => String.fromCharCode(parseInt(p1, 16)));
+        
+        // 替换链接
+        processedText = processedText.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        // 替换引用块
+        processedText = processedText.replace(/^>\s+(.*?)$/gm, '<blockquote class="ps-3 border-start border-3 text-muted">$1</blockquote>');
+        
+        // 水平线
+        processedText = processedText.replace(/^---+$/gm, '<hr class="my-3">');
+        
+        // 处理表格 - 简单表格支持
+        const tableRegex = /^\|(.*?)\|\s*$/gm;
+        if (tableRegex.test(processedText)) {
+            // 查找表格行
+            let tableLines = processedText.match(/^\|(.*?)\|\s*$/gm);
+            if (tableLines && tableLines.length > 1) {
+                let tableHtml = '<div class="table-responsive"><table class="table table-bordered table-sm">';
+                
+                // 处理表头
+                let headerLine = tableLines[0];
+                tableHtml += '<thead><tr>';
+                headerLine.split('|').filter(cell => cell.trim() !== '').forEach(cell => {
+                    tableHtml += `<th>${cell.trim()}</th>`;
+                });
+                tableHtml += '</tr></thead>';
+                
+                // 处理分隔行
+                if (tableLines.length > 2) {
+                    tableHtml += '<tbody>';
+                    // 跳过分隔行，处理数据行
+                    for (let i = 2; i < tableLines.length; i++) {
+                        tableHtml += '<tr>';
+                        tableLines[i].split('|').filter(cell => cell.trim() !== '').forEach(cell => {
+                            tableHtml += `<td>${cell.trim()}</td>`;
+                        });
+                        tableHtml += '</tr>';
+                    }
+                    tableHtml += '</tbody>';
+                }
+                
+                tableHtml += '</table></div>';
+                
+                // 替换原始表格文本
+                for (const line of tableLines) {
+                    processedText = processedText.replace(line, '');
+                }
+                processedText += tableHtml;
+            }
+        }
+        
+        // 替换换行符为<br>标签
+        processedText = processedText.replace(/\n/g, '<br>');
+        
+        // 修复一些常见问题
+        // 修复可能的嵌套段落
+        processedText = processedText.replace(/<\/p><br><p>/g, '</p><p>');
+        // 去除多余的<br>标签
+        processedText = processedText.replace(/<br><br>/g, '<br>');
+        processedText = processedText.replace(/<br><br>/g, '<br>'); // 再执行一次以处理可能的多个连续换行
+        // 修复列表内部的<br>
+        processedText = processedText.replace(/<li>(.*?)<br>/g, '<li>$1');
+        
+        // 修复可能包含的未处理转义字符，常见于AI生成的内容
+        processedText = processedText
+            .replace(/\\"/g, '"')
+            .replace(/\\'/g, "'")
+            .replace(/\\\\/g, "\\");
+        
+        // 修复最终呈现
+        if (!processedText.startsWith('<')) {
+            processedText = '<p>' + processedText + '</p>';
+        }
+        
+        return processedText;
+    } catch (error) {
+        console.error('Markdown渲染出错:', error);
+        // 出错时返回纯文本，但尝试最基本的换行处理
+        return `<p>${String(text).replace(/\n/g, '<br>').replace(/\\n/g, '<br>')}</p>`;
+    }
 }
 
 /**
@@ -2743,6 +3013,67 @@ async function extractExcelSummary(fileData) {
         
         let summary = `文件包含 ${sheetNames.length} 个工作表: ${sheetNames.join(', ')}\n\n`;
         
+        // 辅助函数：检测值是否可能是Excel日期
+        function isLikelyExcelDate(value) {
+            // 如果是数字，且在有效的Excel日期范围内（1900年至今，约为0-44000之间的数字）
+            return typeof value === 'number' && value > 0 && value < 50000;
+        }
+        
+        // 辅助函数：获取列的数据类型
+        function detectColumnTypes(jsonData) {
+            if (jsonData.length < 2) return {}; // 需要至少有表头和一行数据
+            
+            const headers = jsonData[0];
+            const columnTypes = {};
+            
+            // 对每一列进行类型检测
+            for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+                const header = headers[colIndex];
+                if (header === undefined || header === null) continue;
+                
+                let dateCount = 0;
+                let numberCount = 0;
+                let stringCount = 0;
+                let totalCount = 0;
+                
+                // 检查最多20行数据来判断列类型
+                for (let rowIndex = 1; rowIndex < Math.min(jsonData.length, 21); rowIndex++) {
+                    if (!jsonData[rowIndex] || colIndex >= jsonData[rowIndex].length) continue;
+                    
+                    const cellValue = jsonData[rowIndex][colIndex];
+                    if (cellValue === undefined || cellValue === null) continue;
+                    
+                    totalCount++;
+                    
+                    if (isLikelyExcelDate(cellValue)) {
+                        dateCount++;
+                    } else if (typeof cellValue === 'number' || !isNaN(parseFloat(cellValue))) {
+                        numberCount++;
+                    } else {
+                        stringCount++;
+                    }
+                }
+                
+                // 确定列的主要类型
+                if (totalCount > 0) {
+                    // 超过70%的单元格是日期格式，判定为日期列
+                    if (dateCount / totalCount > 0.7) {
+                        columnTypes[header] = '日期';
+                    } 
+                    // 超过70%的单元格是数字，判定为数字列
+                    else if (numberCount / totalCount > 0.7) {
+                        columnTypes[header] = '数字';
+                    } 
+                    // 其他情况判定为文本列
+                    else {
+                        columnTypes[header] = '文本';
+                    }
+                }
+            }
+            
+            return columnTypes;
+        }
+        
         // 对每个工作表进行摘要
         for (let i = 0; i < Math.min(sheetNames.length, 3); i++) { // 最多处理前3个工作表
             const sheetName = sheetNames[i];
@@ -2772,6 +3103,21 @@ async function extractExcelSummary(fileData) {
                         .slice(0, 10); // 最多显示10个表头
                         
                     summary += `- 表头: ${headers.join(', ')}${jsonData[0].length > 10 ? '...(更多)' : ''}\n`;
+                    
+                    // 检测列类型
+                    if (rowCount > 1) {
+                        const columnTypes = detectColumnTypes(jsonData);
+                        if (Object.keys(columnTypes).length > 0) {
+                            summary += `- 列类型:\n`;
+                            for (const [header, type] of Object.entries(columnTypes)) {
+                                if (type === '日期') {
+                                    summary += `  "${header}": ${type} (Excel存储格式，需要特殊处理)\n`;
+                                } else {
+                                    summary += `  "${header}": ${type}\n`;
+                                }
+                            }
+                        }
+                    }
                     
                     // 添加数据行示例
                     if (rowCount > 1) {
@@ -2811,6 +3157,9 @@ async function extractExcelSummary(fileData) {
         if (sheetNames.length > 3) {
             summary += `...(文件还包含 ${sheetNames.length - 3} 个未显示的工作表)\n`;
         }
+        
+        // 添加提示，告知AI关于Excel日期格式的特殊处理
+        summary += '\n注意：Excel将日期存储为自1900年1月1日起的天数（如45716表示2025年1月1日），需要特殊处理才能正确显示。\n';
         
         // 限制摘要总长度
         if (summary.length > 4000) {
@@ -2855,6 +3204,57 @@ async function processExcelWithAIGuidance(fileData, instruction, processingSteps
         let originalHeadersAll = {};
         let processedHeadersAll = {};
         
+        // 辅助函数：检测值是否可能是Excel日期
+        function isLikelyExcelDate(value) {
+            // 如果是数字，且在有效的Excel日期范围内（1900年至今，约为0-50000之间的数字）
+            return typeof value === 'number' && value > 0 && value < 50000;
+        }
+        
+        // 辅助函数：检测列的数据类型
+        function detectDateColumns(jsonData) {
+            if (jsonData.length < 2) return []; // 需要至少有表头和一行数据
+            
+            const headers = jsonData[0];
+            const dateColumns = [];
+            
+            // 对每一列进行类型检测
+            for (let colIndex = 0; colIndex < headers.length; colIndex++) {
+                const header = headers[colIndex];
+                if (header === undefined || header === null) continue;
+                
+                // 检查列名是否包含时间/日期相关关键词
+                const isTimeColumn = /时间|日期|date|time/i.test(String(header));
+                if (!isTimeColumn) continue; // 如果列名不包含时间相关关键词，跳过
+                
+                let dateCount = 0;
+                let totalCount = 0;
+                
+                // 检查最多20行数据来判断是否为日期列
+                for (let rowIndex = 1; rowIndex < Math.min(jsonData.length, 21); rowIndex++) {
+                    if (!jsonData[rowIndex] || colIndex >= jsonData[rowIndex].length) continue;
+                    
+                    const cellValue = jsonData[rowIndex][colIndex];
+                    if (cellValue === undefined || cellValue === null) continue;
+                    
+                    totalCount++;
+                    
+                    if (isLikelyExcelDate(cellValue)) {
+                        dateCount++;
+                    }
+                }
+                
+                // 如果超过70%的单元格是日期格式，判定为日期列
+                if (totalCount > 0 && dateCount / totalCount > 0.7) {
+                    dateColumns.push({
+                        column: header,
+                        index: colIndex
+                    });
+                }
+            }
+            
+            return dateColumns;
+        }
+        
         // 处理每个工作表
         for (const sheetName of sheetNames) {
             // 获取原始工作表
@@ -2873,6 +3273,52 @@ async function processExcelWithAIGuidance(fileData, instruction, processingSteps
             // 处理前先保存列名(第一行)
             const originalHeaders = jsonData.length > 0 ? [...jsonData[0]] : [];
             originalHeadersAll[sheetName] = originalHeaders;
+            
+            // 检测是否存在可能的日期列
+            const dateColumns = detectDateColumns(jsonData);
+            if (dateColumns.length > 0) {
+                console.log(`在工作表 "${sheetName}" 中检测到 ${dateColumns.length} 个可能的日期列:`, 
+                    dateColumns.map(col => col.column).join(', '));
+                
+                // 自动添加日期格式化操作
+                let hasExplicitDateFormatting = false;
+                
+                // 检查是否已经有明确的日期格式化操作
+                for (const operation of operations) {
+                    if (operation.type === 'transform_data' && 
+                        operation.params && 
+                        operation.params.operations) {
+                        for (const op of operation.params.operations) {
+                            if (op.type === 'format_date') {
+                                hasExplicitDateFormatting = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (hasExplicitDateFormatting) break;
+                }
+                
+                // 如果没有明确的日期格式化操作，添加自动格式化
+                if (!hasExplicitDateFormatting) {
+                    // 创建日期格式化操作
+                    const dateFormatOperations = dateColumns.map(col => ({
+                        type: 'format_date',
+                        column: col.column
+                    }));
+                    
+                    // 添加到操作列表
+                    operations.push({
+                        type: 'transform_data',
+                        params: {
+                            operations: dateFormatOperations,
+                            skipHeader: true
+                        },
+                        auto_generated: true // 标记为自动生成的操作
+                    });
+                    
+                    console.log('已自动添加日期格式化操作:', dateFormatOperations);
+                }
+            }
             
             // 应用每个操作
             for (const operation of operations) {
@@ -2919,7 +3365,8 @@ async function processExcelWithAIGuidance(fileData, instruction, processingSteps
                     const rowsAfter = jsonData.length;
                     const colsAfter = jsonData[0] ? jsonData[0].length : 0;
                     
-                    console.log(`操作 ${type} 执行结果: 行数 ${rowsBefore}->${rowsAfter}, 列数 ${colsBefore}->${colsAfter}`);
+                    const operationInfo = operation.auto_generated ? '[自动生成] ' : '';
+                    console.log(`${operationInfo}操作 ${type} 执行结果: 行数 ${rowsBefore}->${rowsAfter}, 列数 ${colsBefore}->${colsAfter}`);
                     
                     // 判断是否有效处理，如果操作后数据没有任何变化，可能是处理有问题
                     if (type === 'filter_columns' && colsBefore === colsAfter && 
@@ -3068,39 +3515,121 @@ function addProcessingReportSheet(workbook, instruction, processingSteps) {
     reportRows.push(['']);
     
     // 添加原始文件名
-    reportRows.push(['原始文件:', aiPreprocessFile.name]);
-    reportRows.push(['']);
+    if (typeof aiPreprocessFile !== 'undefined' && aiPreprocessFile && aiPreprocessFile.name) {
+        reportRows.push(['原始文件:', aiPreprocessFile.name]);
+        reportRows.push(['']);
+    }
     
     // 添加处理需求
     reportRows.push(['处理需求:']);
-    instruction.split('\n').forEach(line => {
-        reportRows.push([line]);
-    });
+    if (instruction) {
+        instruction.split('\n').forEach(line => {
+            reportRows.push([line]);
+        });
+    } else {
+        reportRows.push(['未提供指令']);
+    }
     reportRows.push(['']);
     
     // 添加处理摘要
     reportRows.push(['处理摘要:']);
-    reportRows.push([processingSteps.summary || '未提供摘要']);
+    if (typeof processingSteps === 'string') {
+        reportRows.push([processingSteps]);
+    } else if (processingSteps) {
+        reportRows.push([processingSteps.summary || '未提供摘要']);
+    } else {
+        reportRows.push(['未提供处理步骤']);
+    }
     reportRows.push(['']);
+    
+    // 检查是否有错误信息
+    if (processingSteps && processingSteps.error) {
+        reportRows.push(['错误信息:']);
+        reportRows.push([processingSteps.error]);
+        reportRows.push(['']);
+    }
+    
+    // 检查是否有详细说明
+    if (processingSteps && processingSteps.text) {
+        reportRows.push(['详细说明:']);
+        reportRows.push([processingSteps.text]);
+        reportRows.push(['']);
+    }
+    
+    // 检查是否有自动生成的操作
+    if (processingSteps && typeof processingSteps !== 'string') {
+        const operations = processingSteps.operations || processingSteps.steps || [];
+        const autoOps = operations.filter(op => op.auto_generated);
+        
+        if (autoOps.length > 0) {
+            const autoDateOps = autoOps.filter(op => 
+                op.type === 'transform_data' && 
+                op.params && 
+                op.params.operations && 
+                op.params.operations.some(subOp => subOp.type === 'format_date')
+            );
+            
+            if (autoDateOps.length > 0) {
+                // 收集所有自动格式化的日期列
+                const dateColumns = [];
+                autoDateOps.forEach(op => {
+                    if (op.params && op.params.operations) {
+                        op.params.operations.forEach(subOp => {
+                            if (subOp.type === 'format_date' && subOp.column) {
+                                dateColumns.push(subOp.column);
+                            }
+                        });
+                    }
+                });
+                
+                // 添加到报告中
+                if (dateColumns.length > 0) {
+                    reportRows.push(['自动格式化:']);
+                    reportRows.push([`系统检测到并自动格式化了以下日期列: ${dateColumns.join(', ')}`]);
+                    reportRows.push(['Excel将日期存储为数字（自1900年1月1日起的天数），系统已将这些数字转换为可读的日期格式。']);
+                    reportRows.push(['']);
+                }
+            }
+        }
+    }
     
     // 添加处理步骤详情
-    reportRows.push(['应用的处理步骤:']);
-    
-    const operations = processingSteps.operations || processingSteps.steps || [];
-    operations.forEach((op, index) => {
-        reportRows.push([`${index + 1}. ${op.type || '未知操作'}`]);
+    if (processingSteps && typeof processingSteps !== 'string') {
+        const operations = processingSteps.operations || processingSteps.steps || [];
         
-        // 添加参数详情
-        if (op.params) {
-            Object.entries(op.params).forEach(([key, value]) => {
-                const valueStr = Array.isArray(value) ? value.join(', ') : String(value);
-                reportRows.push([`   - ${key}: ${valueStr}`]);
+        if (operations.length > 0) {
+            reportRows.push(['应用的处理步骤:']);
+            
+            operations.forEach((op, index) => {
+                const isAuto = op.auto_generated ? '[自动] ' : '';
+                reportRows.push([`${index + 1}. ${isAuto}${op.type || '未知操作'}`]);
+                
+                // 添加参数详情
+                if (op.params) {
+                    Object.entries(op.params).forEach(([key, value]) => {
+                        if (key === 'operations' && Array.isArray(value)) {
+                            // 特殊处理transform_data的operations数组
+                            reportRows.push([`   - ${key}:`]);
+                            value.forEach((subOp, subIndex) => {
+                                let subOpDesc = `     ${subIndex + 1}. ${subOp.type}`;
+                                if (subOp.column) {
+                                    subOpDesc += ` (列: ${subOp.column})`;
+                                }
+                                reportRows.push([subOpDesc]);
+                            });
+                        } else {
+                            const valueStr = Array.isArray(value) ? value.join(', ') : String(value);
+                            reportRows.push([`   - ${key}: ${valueStr}`]);
+                        }
+                    });
+                }
             });
+            
+            reportRows.push(['']);
         }
-    });
+    }
     
     // 添加说明
-    reportRows.push(['']);
     reportRows.push(['说明:']);
     reportRows.push(['1. 原始数据已保留在原始工作表中']);
     reportRows.push(['2. 处理后的数据保存在带有"_处理后"后缀的工作表中']);
@@ -3575,14 +4104,64 @@ function transformData(jsonData, params) {
                 case 'format_date':
                     try {
                         if (cellValue) {
-                            const date = new Date(cellValue);
-                            if (!isNaN(date.getTime())) {
-                                // 简单的日期格式化
-                                newRow[columnIndex] = date.toLocaleDateString();
+                            // 判断列名是否可能是时间相关字段
+                            const columnName = headers[columnIndex] || '';
+                            const isTimeColumn = /时间|日期|date|time/i.test(columnName);
+                            
+                            // 判断是否为Excel日期数值格式（如45716.93505）
+                            if ((typeof cellValue === 'number' || (typeof cellValue === 'string' && !isNaN(parseFloat(cellValue)))) && isTimeColumn) {
+                                const excelDateValue = parseFloat(cellValue);
+                                // Excel日期从1900年1月1日开始，但有一个1900年2月29日的bug（1900年不是闰年）
+                                // 因此大于等于60的数值需要减1进行修正
+                                let dateValue = excelDateValue;
+                                if (dateValue >= 60) {
+                                    dateValue -= 1;
+                                }
+                                // 计算日期：Excel基准日期是1899年12月30日（而不是31日，因为历史原因）
+                                const baseDate = new Date(1899, 11, 30);
+                                const excelDate = new Date(baseDate.getTime() + dateValue * 24 * 60 * 60 * 1000);
+                                
+                                // 检查日期是否有效
+                                if (!isNaN(excelDate.getTime())) {
+                                    // 格式化日期时间
+                                    const year = excelDate.getFullYear();
+                                    const month = String(excelDate.getMonth() + 1).padStart(2, '0');
+                                    const day = String(excelDate.getDate()).padStart(2, '0');
+                                    
+                                    // 如果有小数部分，说明包含时间
+                                    if (excelDateValue % 1 !== 0) {
+                                        const hours = String(excelDate.getHours()).padStart(2, '0');
+                                        const minutes = String(excelDate.getMinutes()).padStart(2, '0');
+                                        const seconds = String(excelDate.getSeconds()).padStart(2, '0');
+                                        newRow[columnIndex] = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                                    } else {
+                                        // 只有日期部分
+                                        newRow[columnIndex] = `${year}-${month}-${day}`;
+                                    }
+                                }
+                            } else if (isTimeColumn) {
+                                // 只有时间列才尝试标准日期格式解析
+                                const date = new Date(cellValue);
+                                if (!isNaN(date.getTime())) {
+                                    // 使用标准格式化
+                                    const year = date.getFullYear();
+                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getDate()).padStart(2, '0');
+                                    
+                                    // 检查是否包含时间
+                                    if (date.getHours() !== 0 || date.getMinutes() !== 0 || date.getSeconds() !== 0) {
+                                        const hours = String(date.getHours()).padStart(2, '0');
+                                        const minutes = String(date.getMinutes()).padStart(2, '0');
+                                        const seconds = String(date.getSeconds()).padStart(2, '0');
+                                        newRow[columnIndex] = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+                                    } else {
+                                        newRow[columnIndex] = `${year}-${month}-${day}`;
+                                    }
+                                }
                             }
                         }
                     } catch (e) {
-                        console.error('日期格式化失败:', e);
+                        console.error('日期格式化失败:', e, '原始值:', cellValue);
                     }
                     break;
                 case 'extract':
