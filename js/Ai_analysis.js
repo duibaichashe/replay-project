@@ -2270,3 +2270,1446 @@ function closeModal(modalId) {
         console.error('关闭模态框出错:', error);
     }
 }
+
+/**
+ * AI文件预处理功能模块
+ */
+
+// 全局变量
+let aiPreprocessFile = null;  // 存储待处理的文件
+let processedFileData = null; // 存储处理后的文件数据
+
+// 初始化AI文件预处理功能
+document.addEventListener('DOMContentLoaded', function() {
+    initAIPreprocessFeature();
+});
+
+/**
+ * 初始化AI文件预处理功能
+ */
+function initAIPreprocessFeature() {
+    // 绑定文件上传事件
+    const fileInput = document.getElementById('ai-preprocess-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', handlePreprocessFileSelect);
+    }
+    
+    // 初始化拖放区域
+    initPreprocessDropZone();
+    
+    // 绑定开始处理按钮事件
+    const startBtn = document.getElementById('start-ai-preprocess-btn');
+    if (startBtn) {
+        startBtn.addEventListener('click', startAIPreprocess);
+    }
+    
+    // 绑定下载按钮事件
+    const downloadBtn = document.getElementById('download-processed-file-btn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadProcessedFile);
+    }
+    
+    console.log('AI文件预处理功能初始化完成');
+}
+
+/**
+ * 初始化文件拖放区域
+ */
+function initPreprocessDropZone() {
+    const dropZone = document.getElementById('ai-preprocess-upload-area');
+    if (!dropZone) return;
+    
+    // 阻止默认拖放行为
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+    });
+    
+    // 高亮显示拖放区域
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.add('highlight');
+        }, false);
+    });
+    
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.classList.remove('highlight');
+        }, false);
+    });
+    
+    // 处理文件拖放
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        
+        if (files.length) {
+            const fileInput = document.getElementById('ai-preprocess-file');
+            fileInput.files = files;
+            handlePreprocessFileSelect({ target: fileInput });
+        }
+    }, false);
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+}
+
+/**
+ * 处理预处理文件选择
+ */
+function handlePreprocessFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // 检查文件类型
+    if (!file.name.match(/\.(xlsx|xls)$/i)) {
+        showNotice('warning', '请上传Excel文件(.xlsx或.xls)');
+        return;
+    }
+    
+    // 保存文件
+    aiPreprocessFile = file;
+    
+    // 显示文件信息
+    updatePreprocessFileInfo(file);
+    
+    // 启用开始处理按钮
+    document.getElementById('start-ai-preprocess-btn').disabled = false;
+    
+    console.log('已选择预处理文件:', file.name);
+}
+
+/**
+ * 更新预处理文件信息显示
+ */
+function updatePreprocessFileInfo(file) {
+    const fileInfo = document.getElementById('ai-preprocess-file-info');
+    const fileDetails = fileInfo.querySelector('.file-details');
+    
+    fileDetails.querySelector('.file-name').textContent = file.name;
+    fileDetails.querySelector('.file-size').textContent = formatFileSize(file.size);
+    fileDetails.classList.remove('d-none');
+    
+    // 显示文件上传成功消息
+    showStatusMessage('ai-preprocess-status', '文件已选择，可以开始处理', 'success');
+}
+
+/**
+ * 开始AI预处理
+ */
+async function startAIPreprocess() {
+    if (!aiPreprocessFile) {
+        showNotice('warning', '请先选择要处理的文件');
+        return;
+    }
+    
+    let instruction = document.getElementById('ai-preprocess-instruction').value.trim();
+    if (!instruction) {
+        showNotice('warning', '请输入处理指令');
+        return;
+    }
+    
+    try {
+        // 显示进度条
+        const progressContainer = document.getElementById('ai-preprocess-progress-container');
+        const progressBar = document.getElementById('ai-preprocess-progress-bar');
+        const progressText = document.getElementById('ai-preprocess-progress-text');
+        
+        progressContainer.classList.remove('d-none');
+        progressBar.style.width = '10%';
+        progressText.textContent = '正在读取文件...';
+        
+        // 禁用按钮
+        document.getElementById('start-ai-preprocess-btn').disabled = true;
+        
+        // 读取文件内容
+        const fileData = await readFileAsArrayBuffer(aiPreprocessFile);
+        
+        // 更新进度
+        progressBar.style.width = '20%';
+        progressText.textContent = '文件读取完成，正在分析指令...';
+        
+        // 处理用户指令，使其更加规范化
+        instruction = preprocessInstruction(instruction);
+        
+        // 更新进度
+        progressBar.style.width = '30%';
+        progressText.textContent = '指令分析完成，正在发送到AI进行处理...';
+        
+        // 发送到AI处理
+        processedFileData = await sendToAIForProcessing(fileData, instruction);
+        
+        // 更新进度
+        progressBar.style.width = '90%';
+        progressText.textContent = '处理完成，准备下载...';
+        
+        // 启用下载按钮
+        document.getElementById('download-processed-file-btn').disabled = false;
+        
+        // 完成进度
+        progressBar.style.width = '100%';
+        progressText.textContent = '处理完成！可以下载或继续使用';
+        
+        // 显示成功消息
+        showNotice('success', 'AI文件处理完成');
+        
+    } catch (error) {
+        console.error('AI预处理出错:', error);
+        showNotice('danger', 'AI处理失败: ' + error.message);
+        
+        // 隐藏进度条
+        document.getElementById('ai-preprocess-progress-container').classList.add('d-none');
+        
+        // 重新启用按钮
+        document.getElementById('start-ai-preprocess-btn').disabled = false;
+    }
+}
+
+/**
+ * 预处理用户指令，使其更加规范化
+ */
+function preprocessInstruction(instruction) {
+    // 转换为标准格式
+    let processedInstruction = instruction;
+    
+    // 处理各种常见的列操作表达
+    if (instruction.includes('只保留') || instruction.includes('仅保留') || instruction.includes('保留列')) {
+        // 提取引号中的列名
+        const columnMatches = instruction.match(/['"](.*?)['"]|['"]([^'"]+?)['"]|['"](.*?)['"]/g) || [];
+        
+        if (columnMatches.length > 0) {
+            // 提取并规范化列名
+            const columnNames = columnMatches.map(col => col.replace(/['"]/g, '').trim());
+            
+            // 构建更明确的指令
+            processedInstruction = `严格地只保留以下列，任何其他列必须全部清除：\n`;
+            columnNames.forEach(col => {
+                processedInstruction += `- "${col}"\n`;
+            });
+            
+            // 添加明确的操作类型提示和严格的参数说明
+            processedInstruction += `\n操作类型：filter_columns\n`;
+            processedInstruction += `参数：严格包含以上${columnNames.length}列，移除所有其他列\n`;
+            processedInstruction += `注意：最终结果必须且只能有${columnNames.length}列\n`;
+            processedInstruction += `\n原始指令：${instruction}`;
+        }
+    }
+    
+    console.log('原始指令:', instruction);
+    console.log('处理后指令:', processedInstruction);
+    
+    return processedInstruction;
+}
+
+/**
+ * 读取文件为ArrayBuffer
+ */
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            resolve(e.target.result);
+        };
+        
+        reader.onerror = (e) => {
+            reject(new Error('读取文件失败'));
+        };
+        
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+/**
+ * 发送到AI处理
+ * @param {ArrayBuffer} fileData - 文件数据
+ * @param {string} instruction - 处理指令
+ * @returns {ArrayBuffer} - 处理后的文件数据
+ */
+async function sendToAIForProcessing(fileData, instruction) {
+    // 检查是否使用演示模式
+    if (aiSettings.useDemoMode) {
+        // 演示模式下，模拟AI处理过程
+        return await simulateAIProcessing(fileData, instruction);
+    } else {
+        // 实际API调用模式
+        return await callAIProcessingAPI(fileData, instruction);
+    }
+}
+
+/**
+ * 模拟AI处理（演示模式）
+ */
+function simulateAIProcessing(fileData, instruction) {
+    return new Promise((resolve) => {
+        // 模拟处理延迟
+        setTimeout(() => {
+            // 这里简单返回原始文件，实际项目中应当根据instruction对数据进行处理
+            console.log('模拟AI处理，处理指令:', instruction);
+            resolve(fileData);
+        }, 2000);
+    });
+}
+
+/**
+ * 调用AI处理API
+ */
+async function callAIProcessingAPI(fileData, instruction) {
+    try {
+        // 检查API配置
+        if (!aiSettings.apiUrl || !aiSettings.apiKey) {
+            throw new Error('请先在设置中配置AI API');
+        }
+        
+        // 解析Excel文件并提取数据摘要
+        const dataSummary = await extractExcelSummary(fileData);
+        const fileName = aiPreprocessFile.name;
+        
+        // 获取实际模型名称
+        let modelName = aiSettings.model;
+        if (modelName === 'custom' && aiSettings.customModel) {
+            modelName = aiSettings.customModel;
+        }
+        
+        // 构建系统消息，明确要求输出结构化的处理步骤
+        const systemMessage = `你是一个专业的Excel数据处理专家，能够理解用户的数据处理需求并执行数据清洗、转换和分析操作。
+你的任务是分析Excel文件数据，并精确按照用户的要求提供具体的处理步骤。
+
+用户可能会要求保留特定的列、删除特定的行、筛选数据等操作。例如:
+- 如果用户要求"只保留A,B,C列"，你应该使用filter_columns操作并在params中设置include参数为这些列名
+  - 这是一个严格的要求，结果中必须且只能有这些指定的列，不能多也不能少
+  - "只保留"或"仅保留"意味着其他所有列都必须被删除，最终结果只有这些明确指定的列
+- 如果用户要求"删除所有D列"，你应该使用filter_columns操作并在params中设置exclude参数
+- 如果用户要求"筛选行"或"保留符合条件的行"，你应该使用filter_rows操作
+
+请务必严格解析用户需求，执行精确的操作。尤其是当用户使用"只"、"仅"等限定词时，表示要严格遵照执行。
+
+你必须以JSON格式返回处理步骤，包含以下字段：
+1. "summary": 简短描述你将执行的处理操作
+2. "operations": 包含具体操作步骤的数组，每个操作必须包含:
+   - "type": 操作类型，支持的操作有:
+      * "filter_columns": 筛选列(保留或排除列)
+      * "remove_rows": 删除指定范围的行
+      * "filter_rows": 按条件筛选行
+      * "sort": 排序数据
+      * "rename_columns": 重命名列
+      * "transform_data": 转换数据值
+   - "params": 该操作所需的参数对象，根据操作类型而异
+
+请确保你的返回结果是有效的JSON格式，可以被JSON.parse()解析。`;
+
+        // 构建用户消息，明确说明需要实际处理文件而不仅是建议
+        const userMessage = `我需要你对我的Excel文件"${fileName}"进行数据处理。请务必执行我的具体要求，而不是仅提供建议。
+
+具体处理要求如下：
+${instruction}
+
+请按照以下方式理解我的请求:
+1. 如果我指定"只保留某些列"或"仅保留某些列"，这意味着处理后的文件中必须且只能包含这些列，其他所有列都必须删除
+2. 如果我指定"删除某些列"，请使用filter_columns操作，设置exclude参数为这些列名
+3. 如果我要求筛选满足特定条件的行，请使用filter_rows操作
+4. 要求清晰明确执行这些操作，这是一个数据清洗任务，必须严格按照我的要求处理
+
+以下是文件的数据摘要，请根据这些信息提供具体的处理步骤：
+${dataSummary}
+
+重要: 请输出严格按照我的要求的JSON格式处理步骤，你的处理步骤将会被直接应用到数据上。`;
+        
+        // 构建请求体
+        const requestBody = {
+            model: modelName,
+            messages: [
+                {
+                    role: "system",
+                    content: systemMessage
+                },
+                {
+                    role: "user",
+                    content: userMessage
+                }
+            ],
+            temperature: 0.2,
+            max_tokens: 2000,
+            response_format: { type: "json_object" } // 明确要求JSON格式
+        };
+        
+        // 移除不支持的参数
+        if (!modelName.includes('gpt')) {
+            delete requestBody.response_format;
+        }
+        
+        console.log('发送文件处理请求到AI API...');
+        
+        // 发送请求
+        const response = await fetch(aiSettings.apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${aiSettings.apiKey}`
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        // 检查响应状态
+        if (!response.ok) {
+            let errorMessage = `HTTP错误 ${response.status}`;
+            try {
+                const errorData = await response.json();
+                errorMessage = `API错误: ${errorData.error?.message || response.statusText}`;
+                console.error('API错误响应:', errorData);
+            } catch (e) {
+                console.error('无法解析错误响应:', e);
+            }
+            throw new Error(errorMessage);
+        }
+        
+        // 获取AI回复
+        const responseData = await response.json();
+        
+        // 检查是否有内容响应
+        const contentString = responseData.choices?.[0]?.message?.content || '';
+        console.log('AI处理响应:', contentString.substring(0, 200) + '...');
+        
+        try {
+            // 尝试解析JSON响应
+            let processingSteps;
+            
+            // 处理可能的格式问题
+            if (contentString.includes('```json')) {
+                const match = contentString.match(/```json\s*([\s\S]*?)\s*```/);
+                if (match && match[1]) {
+                    processingSteps = JSON.parse(match[1].trim());
+                }
+            } else {
+                processingSteps = JSON.parse(contentString);
+            }
+            
+            // 如果成功解析出处理步骤，应用到文件数据
+            if (processingSteps && (processingSteps.operations || processingSteps.steps)) {
+                const result = await processExcelWithAIGuidance(fileData, instruction, processingSteps);
+                // 验证结果是否有效
+                if (!(result instanceof ArrayBuffer) && !result.buffer) {
+                    console.error('处理结果不是有效的二进制数据，尝试进行转换');
+                    // 尝试转换为ArrayBuffer
+                    if (Array.isArray(result)) {
+                        return new Uint8Array(result).buffer;
+                    } else {
+                        // 无法转换，使用原始文件数据生成报告
+                        return await processExcelWithAIGuidance(fileData, instruction, { 
+                            summary: '处理结果不是有效格式', 
+                            text: '处理步骤已应用，但结果格式错误。请尝试其他处理指令。' 
+                        });
+                    }
+                }
+                return result;
+            } else {
+                throw new Error('AI返回的处理步骤格式不正确');
+            }
+        } catch (parseError) {
+            console.error('解析AI返回的处理步骤失败:', parseError);
+            showNotice('warning', `无法解析AI的处理步骤，将保留原始数据并显示建议`);
+            return await processExcelWithAIGuidance(fileData, instruction, { summary: '无法解析处理步骤', text: contentString });
+        }
+    } catch (error) {
+        console.error('AI API调用失败:', error);
+        // 确保即使在错误情况下也能返回有效数据
+        try {
+            return await processExcelWithAIGuidance(fileData, instruction, { 
+                summary: 'API调用失败', 
+                error: error.message, 
+                text: '处理过程中发生错误，无法完成请求。请检查API设置或稍后重试。' 
+            });
+        } catch (fallbackError) {
+            console.error('创建错误报告也失败:', fallbackError);
+            // 最后的回退方案：返回原始文件数据
+            return fileData;
+        }
+    }
+}
+
+/**
+ * 从Excel文件中提取数据摘要
+ */
+async function extractExcelSummary(fileData) {
+    try {
+        // 使用SheetJS库读取Excel
+        const workbook = XLSX.read(new Uint8Array(fileData), {type: 'array'});
+        const sheetNames = workbook.SheetNames;
+        
+        if (sheetNames.length === 0) {
+            return '文件不包含任何工作表。';
+        }
+        
+        let summary = `文件包含 ${sheetNames.length} 个工作表: ${sheetNames.join(', ')}\n\n`;
+        
+        // 对每个工作表进行摘要
+        for (let i = 0; i < Math.min(sheetNames.length, 3); i++) { // 最多处理前3个工作表
+            const sheetName = sheetNames[i];
+            const worksheet = workbook.Sheets[sheetName];
+            
+            if (!worksheet) {
+                summary += `工作表 "${sheetName}" 为空或无法访问。\n\n`;
+                continue;
+            }
+            
+            try {
+                // 转换为JSON格式以便处理
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                // 工作表信息
+                const rowCount = jsonData.length;
+                const colCount = rowCount > 0 ? jsonData[0].length : 0;
+                
+                summary += `工作表 "${sheetName}":\n`;
+                summary += `- 行数: ${rowCount}, 列数: ${colCount}\n`;
+                
+                // 列出表头 (第一行)
+                if (rowCount > 0 && Array.isArray(jsonData[0])) {
+                    const headers = jsonData[0]
+                        .filter(h => h !== undefined && h !== null)
+                        .map(h => String(h).substring(0, 30)) // 限制每个表头长度
+                        .slice(0, 10); // 最多显示10个表头
+                        
+                    summary += `- 表头: ${headers.join(', ')}${jsonData[0].length > 10 ? '...(更多)' : ''}\n`;
+                    
+                    // 添加数据行示例
+                    if (rowCount > 1) {
+                        summary += `- 数据示例:\n`;
+                        // 最多显示3行数据
+                        for (let j = 1; j < Math.min(rowCount, 4); j++) {
+                            if (Array.isArray(jsonData[j])) {
+                                const row = jsonData[j]
+                                    .filter(cell => cell !== undefined && cell !== null)
+                                    .map(cell => {
+                                        // 将所有数据类型转换为字符串并限制长度
+                                        const cellStr = String(cell);
+                                        return cellStr.length > 15 ? cellStr.substring(0, 15) + '...' : cellStr;
+                                    })
+                                    .slice(0, 5); // 每行最多显示5个单元格
+                                    
+                                const rowSummary = row.join(', ');
+                                summary += `  行${j}: ${rowSummary}${jsonData[j].length > 5 ? '...(更多)' : ''}\n`;
+                            }
+                        }
+                        
+                        if (rowCount > 4) {
+                            summary += `  ...(共${rowCount}行数据)\n`;
+                        }
+                    }
+                } else {
+                    summary += `- 工作表为空或无有效表头\n`;
+                }
+                
+                summary += '\n';
+            } catch (sheetError) {
+                console.error(`处理工作表 "${sheetName}" 时出错:`, sheetError);
+                summary += `工作表 "${sheetName}" 处理出错: ${sheetError.message}\n\n`;
+            }
+        }
+        
+        if (sheetNames.length > 3) {
+            summary += `...(文件还包含 ${sheetNames.length - 3} 个未显示的工作表)\n`;
+        }
+        
+        // 限制摘要总长度
+        if (summary.length > 4000) {
+            summary = summary.substring(0, 4000) + '...(摘要已截断)';
+        }
+        
+        return summary;
+    } catch (error) {
+        console.error('提取Excel摘要失败:', error);
+        return `无法提取Excel摘要: ${error.message}。文件可能损坏或格式不支持。`;
+    }
+}
+
+/**
+ * 根据AI建议处理Excel文件
+ */
+async function processExcelWithAIGuidance(fileData, instruction, processingSteps) {
+    try {
+        // 使用原始文件数据
+        const workbook = XLSX.read(new Uint8Array(fileData), {type: 'array'});
+        
+        // 检查处理步骤结构
+        let operations = processingSteps.operations || processingSteps.steps || [];
+        const summary = processingSteps.summary || '未提供处理摘要';
+        
+        // 如果处理步骤是字符串(文本内容)，则只生成报告不处理数据
+        if (typeof processingSteps === 'string' || processingSteps.text) {
+            return createReportWorkbook(workbook, instruction, processingSteps);
+        }
+        
+        console.log('应用的处理步骤:', operations);
+        console.log('用户原始指令:', instruction);
+        
+        // 对每个工作表应用操作
+        const sheetNames = workbook.SheetNames;
+        
+        // 创建处理结果工作表
+        const resultWorkbook = XLSX.utils.book_new();
+        
+        // 检查是否包含filter_columns操作，记录原始表头和处理后表头用于验证
+        let hasFilterColumnsOp = false;
+        let originalHeadersAll = {};
+        let processedHeadersAll = {};
+        
+        // 处理每个工作表
+        for (const sheetName of sheetNames) {
+            // 获取原始工作表
+            const originalSheet = workbook.Sheets[sheetName];
+            
+            // 转换为JSON以便处理
+            let jsonData = XLSX.utils.sheet_to_json(originalSheet, {header: 1});
+            
+            // 如果没有数据，跳过此工作表
+            if (jsonData.length === 0) {
+                // 保留空工作表
+                XLSX.utils.book_append_sheet(resultWorkbook, originalSheet, sheetName);
+                continue;
+            }
+            
+            // 处理前先保存列名(第一行)
+            const originalHeaders = jsonData.length > 0 ? [...jsonData[0]] : [];
+            originalHeadersAll[sheetName] = originalHeaders;
+            
+            // 应用每个操作
+            for (const operation of operations) {
+                try {
+                    const type = operation.type;
+                    const params = operation.params || {};
+                    
+                    // 记录哪些工作表有列筛选操作
+                    if (type === 'filter_columns') {
+                        hasFilterColumnsOp = true;
+                        // 将原始指令添加到参数中，以便在filterColumns函数中使用
+                        params.originalInstruction = instruction;
+                    }
+                    
+                    // 记录操作前的数据行列
+                    const rowsBefore = jsonData.length;
+                    const colsBefore = jsonData[0] ? jsonData[0].length : 0;
+                    
+                    // 执行相应的处理操作
+                    switch (type) {
+                        case 'filter_columns':
+                            jsonData = filterColumns(jsonData, params);
+                            break;
+                        case 'remove_rows':
+                            jsonData = removeRows(jsonData, params);
+                            break;
+                        case 'filter_rows':
+                            jsonData = filterRows(jsonData, params);
+                            break;
+                        case 'sort':
+                            jsonData = sortData(jsonData, params);
+                            break;
+                        case 'rename_columns':
+                            jsonData = renameColumns(jsonData, params);
+                            break;
+                        case 'transform_data':
+                            jsonData = transformData(jsonData, params);
+                            break;
+                        default:
+                            console.warn(`未知的操作类型: ${type}`);
+                    }
+                    
+                    // 记录操作后的数据行列
+                    const rowsAfter = jsonData.length;
+                    const colsAfter = jsonData[0] ? jsonData[0].length : 0;
+                    
+                    console.log(`操作 ${type} 执行结果: 行数 ${rowsBefore}->${rowsAfter}, 列数 ${colsBefore}->${colsAfter}`);
+                    
+                    // 判断是否有效处理，如果操作后数据没有任何变化，可能是处理有问题
+                    if (type === 'filter_columns' && colsBefore === colsAfter && 
+                        instruction.toLowerCase().includes('只保留') && params.include) {
+                        console.warn(`警告: filter_columns操作没有减少列数，请检查列名是否匹配`);
+                    }
+                } catch (opError) {
+                    console.error(`执行操作 ${operation.type} 时出错:`, opError);
+                }
+            }
+            
+            // 保存处理后的表头
+            if (jsonData.length > 0) {
+                processedHeadersAll[sheetName] = [...jsonData[0]];
+            }
+            
+            // 将处理后的JSON数据转换回工作表
+            const processedSheet = XLSX.utils.aoa_to_sheet(jsonData);
+            
+            // 添加到结果工作簿
+            XLSX.utils.book_append_sheet(resultWorkbook, processedSheet, `${sheetName}_处理后`);
+        }
+        
+        // 验证处理结果是否符合预期（仅对明确的列筛选需求进行验证）
+        if (hasFilterColumnsOp && instruction.toLowerCase().includes('只保留')) {
+            console.log('验证列筛选结果...');
+            // 提取用户要求保留的列名
+            const keepColumns = extractColumnNamesFromInstruction(instruction);
+            
+            if (keepColumns.length > 0) {
+                console.log('用户要求保留的列:', keepColumns);
+                
+                // 检查每个工作表处理后的表头
+                for (const sheetName in processedHeadersAll) {
+                    const processedHeaders = processedHeadersAll[sheetName];
+                    const originalHeaders = originalHeadersAll[sheetName] || [];
+                    
+                    console.log(`工作表 ${sheetName} 原始表头:`, originalHeaders);
+                    console.log(`工作表 ${sheetName} 处理后表头:`, processedHeaders);
+                    
+                    // 检查是否成功保留了指定的列
+                    const allKeptColumnsFound = keepColumns.every(col => processedHeaders.includes(col));
+                    const anyExtraColumns = processedHeaders.some(col => !keepColumns.includes(col));
+                    
+                    if (!allKeptColumnsFound) {
+                        console.warn(`警告: 工作表 ${sheetName} 没有保留所有指定的列`);
+                    }
+                    
+                    if (anyExtraColumns && keepColumns.length > 0) {
+                        console.warn(`警告: 工作表 ${sheetName} 保留了一些未指定的列`);
+                    }
+                }
+            }
+        }
+        
+        // 如果没有成功添加任何工作表，可能是操作失败
+        if (resultWorkbook.SheetNames.length === 0) {
+            throw new Error('所有处理操作失败，无有效工作表输出');
+        }
+        
+        // 添加AI处理报告工作表
+        addProcessingReportSheet(resultWorkbook, instruction, processingSteps);
+        
+        // 转回二进制
+        const wbout = XLSX.write(resultWorkbook, {bookType:'xlsx', type:'array'});
+        
+        // 确保返回的是ArrayBuffer
+        const buffer = wbout.buffer || new Uint8Array(wbout).buffer;
+        console.log('处理结果类型:', buffer.constructor.name, '大小:', buffer.byteLength);
+        return buffer;
+    } catch (error) {
+        console.error('Excel处理失败:', error);
+        
+        // 如果处理失败，创建一个只包含报告的工作簿
+        try {
+            const fallbackWorkbook = XLSX.read(new Uint8Array(fileData), {type: 'array'});
+            const reportWorkbook = createReportWorkbook(fallbackWorkbook, instruction, {
+                summary: '处理失败',
+                error: error.message,
+                text: typeof processingSteps === 'string' ? processingSteps : JSON.stringify(processingSteps, null, 2)
+            });
+            
+            // 确保返回的是ArrayBuffer
+            if (reportWorkbook instanceof ArrayBuffer) {
+                console.log('报告结果类型: ArrayBuffer, 大小:', reportWorkbook.byteLength);
+                return reportWorkbook;
+            } else if (reportWorkbook instanceof Uint8Array || reportWorkbook.buffer) {
+                const buffer = reportWorkbook.buffer || new Uint8Array(reportWorkbook).buffer;
+                console.log('报告结果类型(转换后): ArrayBuffer, 大小:', buffer.byteLength);
+                return buffer;
+            } else {
+                console.error('无法获取有效的ArrayBuffer，返回原始文件');
+                return fileData;
+            }
+        } catch (fallbackError) {
+            console.error('创建报告工作簿也失败:', fallbackError);
+            return fileData; // 返回原始文件
+        }
+    }
+}
+
+/**
+ * 从指令中提取列名
+ * 用于验证处理结果是否符合预期
+ */
+function extractColumnNamesFromInstruction(instruction) {
+    // 检查"只保留...列"模式
+    let match;
+    let columns = [];
+    
+    // 尝试匹配常见的保留列模式
+    if (instruction.includes('只保留')) {
+        // 例如："只保留'选购商品''商品规格''商品数量''订单应付金额''订单提交时间'这5列"
+        const regex = /只保留[\s'"]*([^'"]+?)['"][\s'"]*[,，、][\s'"]*([^'"]+?)['"][\s'"]*[,，、][\s'"]*([^'"]+?)['"][\s'"]*[,，、][\s'"]*([^'"]+?)['"][\s'"]*[,，、][\s'"]*([^'"]+?)['"][\s'"]*这/;
+        match = instruction.match(regex);
+        if (match) {
+            for (let i = 1; i < match.length; i++) {
+                if (match[i]) columns.push(match[i].trim());
+            }
+        }
+        
+        // 如果上面的正则没匹配成功，尝试更宽松的模式
+        if (columns.length === 0) {
+            // 提取引号中的文本作为列名
+            const quotedTexts = instruction.match(/['"]([^'"]+?)['"]/g) || [];
+            columns = quotedTexts.map(text => text.replace(/['"]/g, '').trim());
+        }
+    }
+    
+    return columns;
+}
+
+/**
+ * 添加处理报告工作表
+ */
+function addProcessingReportSheet(workbook, instruction, processingSteps) {
+    // 创建建议数据数组
+    const reportRows = [];
+    
+    // 添加标题
+    reportRows.push(['AI数据处理报告']);
+    reportRows.push(['']);
+    
+    // 添加处理时间
+    reportRows.push(['处理时间:', new Date().toLocaleString()]);
+    reportRows.push(['']);
+    
+    // 添加原始文件名
+    reportRows.push(['原始文件:', aiPreprocessFile.name]);
+    reportRows.push(['']);
+    
+    // 添加处理需求
+    reportRows.push(['处理需求:']);
+    instruction.split('\n').forEach(line => {
+        reportRows.push([line]);
+    });
+    reportRows.push(['']);
+    
+    // 添加处理摘要
+    reportRows.push(['处理摘要:']);
+    reportRows.push([processingSteps.summary || '未提供摘要']);
+    reportRows.push(['']);
+    
+    // 添加处理步骤详情
+    reportRows.push(['应用的处理步骤:']);
+    
+    const operations = processingSteps.operations || processingSteps.steps || [];
+    operations.forEach((op, index) => {
+        reportRows.push([`${index + 1}. ${op.type || '未知操作'}`]);
+        
+        // 添加参数详情
+        if (op.params) {
+            Object.entries(op.params).forEach(([key, value]) => {
+                const valueStr = Array.isArray(value) ? value.join(', ') : String(value);
+                reportRows.push([`   - ${key}: ${valueStr}`]);
+            });
+        }
+    });
+    
+    // 添加说明
+    reportRows.push(['']);
+    reportRows.push(['说明:']);
+    reportRows.push(['1. 原始数据已保留在原始工作表中']);
+    reportRows.push(['2. 处理后的数据保存在带有"_处理后"后缀的工作表中']);
+    reportRows.push(['3. 如有需要，您可以手动复制所需数据']);
+    
+    // 创建一个新的工作表记录处理报告
+    const reportSheet = XLSX.utils.aoa_to_sheet(reportRows);
+    
+    // 设置列宽
+    reportSheet['!cols'] = [{ wch: 80 }];
+    
+    // 添加到工作簿(放在第一个位置)
+    XLSX.utils.book_append_sheet(workbook, reportSheet, 'AI处理报告', true);
+    
+    // 确保报告工作表在第一位
+    const reportSheetIndex = workbook.SheetNames.indexOf('AI处理报告');
+    if (reportSheetIndex > 0) {
+        const sheetNames = workbook.SheetNames;
+        const reportSheet = sheetNames.splice(reportSheetIndex, 1)[0];
+        sheetNames.unshift(reportSheet);
+        workbook.SheetNames = sheetNames;
+    }
+}
+
+/**
+ * 创建只包含报告的工作簿
+ */
+function createReportWorkbook(originalWorkbook, instruction, content) {
+    // 创建新工作簿
+    const reportWorkbook = XLSX.utils.book_new();
+    
+    // 获取字符串内容
+    let textContent = '';
+    if (typeof content === 'string') {
+        textContent = content;
+    } else if (content.text) {
+        textContent = content.text;
+    } else {
+        textContent = JSON.stringify(content, null, 2);
+    }
+    
+    // 创建报告数据
+    const reportRows = [
+        ['AI数据处理报告'],
+        [''],
+        ['处理时间:', new Date().toLocaleString()],
+        [''],
+        ['原始文件:', aiPreprocessFile.name],
+        [''],
+        ['处理需求:'],
+        [instruction],
+        [''],
+        ['处理结果:'],
+        [content.summary || '未提供摘要'],
+        [''],
+        ['详细信息:']
+    ];
+    
+    // 添加文本内容，按行分割
+    textContent.split('\n').forEach(line => {
+        reportRows.push([line]);
+    });
+    
+    // 添加错误信息(如果有)
+    if (content.error) {
+        reportRows.push(['']);
+        reportRows.push(['错误信息:']);
+        reportRows.push([content.error]);
+    }
+    
+    // 添加说明
+    reportRows.push(['']);
+    reportRows.push(['说明:']);
+    reportRows.push(['处理过程中遇到了问题，无法生成处理后的数据']);
+    reportRows.push(['请检查处理需求或联系技术支持']);
+    
+    // 创建报告工作表
+    const reportSheet = XLSX.utils.aoa_to_sheet(reportRows);
+    
+    // 设置列宽
+    reportSheet['!cols'] = [{ wch: 80 }];
+    
+    // 添加到工作簿
+    XLSX.utils.book_append_sheet(reportWorkbook, reportSheet, 'AI处理报告');
+    
+    // 尝试保留原始数据
+    try {
+        // 最多复制前3个工作表
+        const originalSheetNames = originalWorkbook.SheetNames.slice(0, 3);
+        for (const sheetName of originalSheetNames) {
+            const sheet = originalWorkbook.Sheets[sheetName];
+            XLSX.utils.book_append_sheet(reportWorkbook, sheet, `原始_${sheetName}`);
+        }
+    } catch (e) {
+        console.error('复制原始工作表失败', e);
+    }
+    
+    // 转回二进制
+    const wbout = XLSX.write(reportWorkbook, {bookType:'xlsx', type:'array'});
+    
+    // 确保返回的是ArrayBuffer
+    const buffer = wbout.buffer || new Uint8Array(wbout).buffer;
+    console.log('报告工作簿类型:', buffer.constructor.name, '大小:', buffer.byteLength);
+    return buffer;
+}
+
+// ========== 数据处理函数 ==========
+
+/**
+ * 筛选列
+ */
+function filterColumns(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length === 0) return jsonData;
+    
+    // 获取要保留的列
+    const includeColumns = params.include || [];
+    const excludeColumns = params.exclude || [];
+    
+    // 如果没有指定任何操作，返回原始数据
+    if (includeColumns.length === 0 && excludeColumns.length === 0) {
+        return jsonData;
+    }
+    
+    // 获取表头
+    const headers = jsonData[0];
+    console.log('filterColumns - 原始表头:', headers);
+    console.log('filterColumns - 要包含的列:', includeColumns);
+    console.log('filterColumns - 要排除的列:', excludeColumns);
+    
+    // 执行名称规范化以提高匹配率
+    const normalizedHeaders = headers.map(h => String(h).trim());
+    const normalizedInclude = includeColumns.map(col => String(col).trim());
+    const normalizedExclude = excludeColumns.map(col => String(col).trim());
+    
+    // 找出要保留的列索引
+    let columnsToKeep = [];
+    
+    if (includeColumns.length > 0) {
+        // 如果指定了要包含的列，只保留这些列
+        // 使用精确匹配，但如果精确匹配找不到列，再考虑使用模糊匹配
+        
+        // 第一步：尝试精确匹配
+        let exactMatches = normalizedHeaders.map((header, index) => {
+            return normalizedInclude.includes(header) ? index : -1;
+        }).filter(idx => idx !== -1);
+        
+        // 如果找到了精确匹配的列，就只使用它们
+        if (exactMatches.length > 0) {
+            console.log('使用精确匹配的列:', exactMatches);
+            columnsToKeep = exactMatches;
+        } else {
+            // 第二步：如果没有精确匹配，尝试部分匹配
+            // 为了严格控制，我们优先使用包含关系，而不是被包含关系
+            
+            const partialMatches = [];
+            for (const includeCol of normalizedInclude) {
+                let bestMatchIndex = -1;
+                let bestMatchScore = 0;
+                
+                // 计算每个表头与当前要包含列的匹配分数
+                normalizedHeaders.forEach((header, index) => {
+                    // 完全匹配
+                    if (header === includeCol) {
+                        bestMatchIndex = index;
+                        bestMatchScore = Infinity; // 使用无限大代表精确匹配
+                        return;
+                    }
+                    
+                    // 包含关系匹配
+                    if (header.includes(includeCol)) {
+                        // 如果表头包含要包含的列名，这是一个较好的匹配
+                        const score = includeCol.length / header.length; // 匹配部分越长，分数越高
+                        if (score > bestMatchScore) {
+                            bestMatchScore = score;
+                            bestMatchIndex = index;
+                        }
+                    } else if (includeCol.includes(header)) {
+                        // 如果要包含的列名包含表头，这是次优的匹配
+                        const score = header.length / includeCol.length * 0.8; // 乘以0.8是为了降低优先级
+                        if (score > bestMatchScore) {
+                            bestMatchScore = score;
+                            bestMatchIndex = index;
+                        }
+                    }
+                });
+                
+                // 如果找到了匹配
+                if (bestMatchIndex !== -1) {
+                    console.log(`部分匹配: "${includeCol}" 匹配到表头 "${normalizedHeaders[bestMatchIndex]}" (分数: ${bestMatchScore})`);
+                    partialMatches.push(bestMatchIndex);
+                } else {
+                    console.warn(`未找到与 "${includeCol}" 匹配的列`);
+                }
+            }
+            
+            // 确保没有重复
+            columnsToKeep = [...new Set(partialMatches)];
+            
+            // 如果"仅保留"或"只保留"模式，但匹配的列数与请求的列数不符，输出警告
+            const instruction = params.originalInstruction || '';
+            if ((instruction.includes('仅保留') || instruction.includes('只保留')) && 
+                columnsToKeep.length !== normalizedInclude.length) {
+                console.warn(`警告: 请求保留 ${normalizedInclude.length} 列，但只找到了 ${columnsToKeep.length} 列匹配`);
+            }
+        }
+    } else {
+        // 如果只指定了要排除的列，保留所有未被排除的列
+        columnsToKeep = normalizedHeaders.map((header, index) => {
+            // 检查精确匹配
+            if (normalizedExclude.includes(header)) {
+                return -1;
+            }
+            // 检查部分匹配（如果没有精确匹配）
+            for (const excludeCol of normalizedExclude) {
+                // 如果标题包含要排除的列名，或者要排除的列名包含标题
+                if (header.includes(excludeCol) || excludeCol.includes(header)) {
+                    console.log(`部分匹配: 表头 "${header}" 排除于 "${excludeCol}"`);
+                    return -1;
+                }
+            }
+            return index;
+        }).filter(idx => idx !== -1);
+    }
+    
+    console.log('filterColumns - 保留的列索引:', columnsToKeep);
+    
+    // 筛选列
+    const result = jsonData.map(row => {
+        return columnsToKeep.map(index => row[index]);
+    });
+    
+    console.log('filterColumns - 处理后表头:', result[0]);
+    console.log('filterColumns - 最终保留的列数:', result[0].length);
+    return result;
+}
+
+/**
+ * 删除行
+ */
+function removeRows(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length === 0) return jsonData;
+    
+    // 获取要删除的行范围
+    const start = params.start || 0;
+    const end = params.end || jsonData.length;
+    const skipHeader = params.skipHeader || false;
+    
+    // 保留表头
+    const headerRow = skipHeader ? [jsonData[0]] : [];
+    
+    // 筛选行
+    const filteredRows = jsonData.filter((_, index) => {
+        // 如果是要跳过的表头，保留
+        if (skipHeader && index === 0) return true;
+        // 其他行，如果不在删除范围内，保留
+        return index < start || index >= end;
+    });
+    
+    return filteredRows;
+}
+
+/**
+ * 筛选行
+ */
+function filterRows(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length === 0) return jsonData;
+    
+    // 获取筛选条件
+    const conditions = params.conditions || [];
+    const skipHeader = params.skipHeader !== false; // 默认跳过表头
+    
+    // 如果没有条件，返回原始数据
+    if (conditions.length === 0) return jsonData;
+    
+    // 获取表头以便查找列索引
+    const headers = jsonData[0];
+    
+    // 保留第一行(表头)
+    const headerRow = skipHeader ? [jsonData[0]] : [];
+    
+    // 对每一行应用条件
+    const filteredRows = jsonData.filter((row, rowIndex) => {
+        // 跳过表头行
+        if (skipHeader && rowIndex === 0) return true;
+        
+        // 检查是否满足所有条件
+        return conditions.every(condition => {
+            const columnIndex = headers.indexOf(condition.column);
+            if (columnIndex === -1) return true; // 如果找不到列，跳过此条件
+            
+            const cellValue = row[columnIndex];
+            const targetValue = condition.value;
+            
+            // 根据操作符比较
+            switch (condition.operator) {
+                case 'equals':
+                    return cellValue == targetValue;
+                case 'not_equals':
+                    return cellValue != targetValue;
+                case 'contains':
+                    return String(cellValue).includes(String(targetValue));
+                case 'not_contains':
+                    return !String(cellValue).includes(String(targetValue));
+                case 'greater_than':
+                    return Number(cellValue) > Number(targetValue);
+                case 'less_than':
+                    return Number(cellValue) < Number(targetValue);
+                case 'empty':
+                    return cellValue === undefined || cellValue === null || cellValue === '';
+                case 'not_empty':
+                    return cellValue !== undefined && cellValue !== null && cellValue !== '';
+                default:
+                    return true;
+            }
+        });
+    });
+    
+    return filteredRows;
+}
+
+/**
+ * 排序数据
+ */
+function sortData(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length < 2) return jsonData;
+    
+    // 获取排序列和方向
+    const column = params.column;
+    const direction = params.direction || 'asc'; // 默认升序
+    const skipHeader = params.skipHeader !== false; // 默认跳过表头
+    
+    // 如果没有指定列，返回原始数据
+    if (!column) return jsonData;
+    
+    // 获取表头和数据行
+    const headers = jsonData[0];
+    const dataRows = skipHeader ? jsonData.slice(1) : jsonData;
+    
+    // 找到列索引
+    const columnIndex = headers.indexOf(column);
+    if (columnIndex === -1) return jsonData; // 如果找不到列，返回原始数据
+    
+    // 对数据行排序
+    dataRows.sort((a, b) => {
+        let valueA = a[columnIndex];
+        let valueB = b[columnIndex];
+        
+        // 尝试数字比较
+        if (!isNaN(Number(valueA)) && !isNaN(Number(valueB))) {
+            valueA = Number(valueA);
+            valueB = Number(valueB);
+        } else {
+            valueA = String(valueA || '');
+            valueB = String(valueB || '');
+        }
+        
+        // 根据方向排序
+        if (direction.toLowerCase() === 'asc') {
+            return valueA > valueB ? 1 : valueA < valueB ? -1 : 0;
+        } else {
+            return valueA < valueB ? 1 : valueA > valueB ? -1 : 0;
+        }
+    });
+    
+    // 重组数据
+    return skipHeader ? [headers, ...dataRows] : dataRows;
+}
+
+/**
+ * 重命名列
+ */
+function renameColumns(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length === 0) return jsonData;
+    
+    // 获取重命名映射
+    const mapping = params.mapping || {};
+    
+    // 如果没有映射，返回原始数据
+    if (Object.keys(mapping).length === 0) return jsonData;
+    
+    // 获取表头
+    const headers = [...jsonData[0]];
+    
+    // 应用重命名
+    Object.entries(mapping).forEach(([oldName, newName]) => {
+        const index = headers.indexOf(oldName);
+        if (index !== -1) {
+            headers[index] = newName;
+        }
+    });
+    
+    // 返回新的数据集
+    return [headers, ...jsonData.slice(1)];
+}
+
+/**
+ * 转换数据
+ */
+function transformData(jsonData, params) {
+    // 没有数据直接返回
+    if (!jsonData || jsonData.length === 0) return jsonData;
+    
+    // 获取转换操作
+    const operations = params.operations || [];
+    const skipHeader = params.skipHeader !== false; // 默认跳过表头
+    
+    // 如果没有操作，返回原始数据
+    if (operations.length === 0) return jsonData;
+    
+    // 获取表头
+    const headers = jsonData[0];
+    
+    // 创建结果数组
+    const result = skipHeader ? [headers] : [];
+    
+    // 获取数据行
+    const dataRows = skipHeader ? jsonData.slice(1) : jsonData;
+    
+    // 对每一行应用转换
+    dataRows.forEach(row => {
+        const newRow = [...row]; // 复制行以避免修改原始数据
+        
+        // 应用每个转换操作
+        operations.forEach(operation => {
+            const columnIndex = headers.indexOf(operation.column);
+            if (columnIndex === -1) return; // 如果找不到列，跳过此操作
+            
+            // 获取单元格值
+            let cellValue = newRow[columnIndex];
+            
+            // 根据操作类型转换数据
+            switch (operation.type) {
+                case 'to_upper':
+                    if (cellValue) newRow[columnIndex] = String(cellValue).toUpperCase();
+                    break;
+                case 'to_lower':
+                    if (cellValue) newRow[columnIndex] = String(cellValue).toLowerCase();
+                    break;
+                case 'multiply':
+                    if (!isNaN(Number(cellValue))) {
+                        newRow[columnIndex] = Number(cellValue) * (operation.value || 1);
+                    }
+                    break;
+                case 'divide':
+                    if (!isNaN(Number(cellValue)) && operation.value !== 0) {
+                        newRow[columnIndex] = Number(cellValue) / (operation.value || 1);
+                    }
+                    break;
+                case 'add':
+                    if (!isNaN(Number(cellValue))) {
+                        newRow[columnIndex] = Number(cellValue) + (operation.value || 0);
+                    }
+                    break;
+                case 'subtract':
+                    if (!isNaN(Number(cellValue))) {
+                        newRow[columnIndex] = Number(cellValue) - (operation.value || 0);
+                    }
+                    break;
+                case 'replace':
+                    if (cellValue !== undefined && cellValue !== null) {
+                        newRow[columnIndex] = String(cellValue).replace(
+                            operation.search || '',
+                            operation.replacement || ''
+                        );
+                    }
+                    break;
+                case 'format_date':
+                    try {
+                        if (cellValue) {
+                            const date = new Date(cellValue);
+                            if (!isNaN(date.getTime())) {
+                                // 简单的日期格式化
+                                newRow[columnIndex] = date.toLocaleDateString();
+                            }
+                        }
+                    } catch (e) {
+                        console.error('日期格式化失败:', e);
+                    }
+                    break;
+                case 'extract':
+                    if (cellValue) {
+                        const match = String(cellValue).match(operation.pattern || /./);
+                        newRow[columnIndex] = match ? match[0] : cellValue;
+                    }
+                    break;
+                case 'set_value':
+                    newRow[columnIndex] = operation.value;
+                    break;
+            }
+        });
+        
+        // 添加转换后的行
+        result.push(newRow);
+    });
+    
+    return result;
+}
+
+/**
+ * 下载处理后的文件
+ */
+function downloadProcessedFile() {
+    // 检查是否有处理后的文件
+    if (!processedFileData) {
+        showNotice('warning', '没有处理后的文件可下载');
+        console.error('下载失败: processedFileData 为空');
+        return;
+    }
+    
+    try {
+        console.log('准备下载文件，数据类型:', processedFileData.constructor.name);
+        console.log('数据大小:', processedFileData.byteLength || '未知');
+        
+        // 准备二进制数据
+        let binaryData;
+        
+        // 处理不同类型的数据
+        if (processedFileData instanceof ArrayBuffer) {
+            binaryData = processedFileData;
+            console.log('使用ArrayBuffer数据下载');
+        } else if (processedFileData instanceof Uint8Array) {
+            binaryData = processedFileData.buffer;
+            console.log('使用Uint8Array数据下载');
+        } else if (Array.isArray(processedFileData)) {
+            binaryData = new Uint8Array(processedFileData).buffer;
+            console.log('使用Array数据下载，已转换为ArrayBuffer');
+        } else if (typeof processedFileData === 'object' && processedFileData.buffer) {
+            binaryData = processedFileData.buffer;
+            console.log('使用带buffer属性的对象下载');
+        } else {
+            console.error('无法识别的数据类型:', processedFileData);
+            showNotice('danger', '数据格式错误，无法下载');
+            return;
+        }
+        
+        // 显示下载进度
+        showStatusMessage('ai-preprocess-status', '正在生成下载链接...', 'info');
+        
+        // 创建Blob和下载链接
+        const blob = new Blob([binaryData], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+        const url = URL.createObjectURL(blob);
+        
+        // 生成文件名（原文件名前加"AI处理_"前缀）
+        const originalFileName = aiPreprocessFile.name;
+        const extension = originalFileName.lastIndexOf('.') !== -1 ? 
+                        originalFileName.substring(originalFileName.lastIndexOf('.')) : '.xlsx';
+        const baseFileName = originalFileName.lastIndexOf('.') !== -1 ? 
+                        originalFileName.substring(0, originalFileName.lastIndexOf('.')) : originalFileName;
+        const fileName = `AI处理_${baseFileName}${extension}`;
+        
+        // 创建下载链接
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        
+        // 显示下载进度
+        showStatusMessage('ai-preprocess-status', '正在下载文件...', 'success');
+        
+        // 触发下载
+        a.click();
+        
+        // 清理
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showStatusMessage('ai-preprocess-status', '文件已下载成功', 'success');
+        }, 100);
+        
+        console.log('文件下载成功');
+    } catch (error) {
+        console.error('下载文件时出错:', error);
+        showNotice('danger', '下载文件失败: ' + error.message);
+        showStatusMessage('ai-preprocess-status', '下载失败: ' + error.message, 'danger');
+    }
+}
+
+/**
+ * 工具函数：显示状态消息
+ */
+function showStatusMessage(elementId, message, type = 'info') {
+    const statusElement = document.getElementById(elementId);
+    if (!statusElement) return;
+    
+    // 清除旧消息
+    statusElement.innerHTML = '';
+    
+    // 创建新消息
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} py-1 px-2 small`;
+    alertDiv.textContent = message;
+    
+    statusElement.appendChild(alertDiv);
+}
+
+/**
+ * 工具函数：格式化文件大小
+ */
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
