@@ -29,6 +29,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 确保模态框和Bootstrap组件正确初始化
     initBootstrapComponents();
+    
+    // 设置AI助手初始化监听器
+    setupAIChatAssistantListener();
 });
 
 /**
@@ -2304,6 +2307,18 @@ function showNotice(type, message, duration = 3000) {
         document.body.appendChild(noticeContainer);
     }
     
+    // 检查是否已经存在相同内容的通知，避免重复显示
+    const existingNotices = noticeContainer.querySelectorAll('.alert');
+    for (let i = 0; i < existingNotices.length; i++) {
+        const existingNotice = existingNotices[i];
+        const existingText = existingNotice.textContent.trim();
+        // 如果已有相同内容的通知，不再创建新通知
+        if (existingText.includes(message)) {
+            console.log('已存在相同内容的通知，跳过显示:', message);
+            return;
+        }
+    }
+    
     // 创建通知元素
     const notice = document.createElement('div');
     notice.className = `alert alert-${type} alert-dismissible fade show`;
@@ -4291,4 +4306,926 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+/**
+ * 实时AI助手功能
+ * 提供实时聊天界面，允许用户用自然语言询问数据相关问题
+ */
+
+// AI助手聊天历史
+let chatHistory = [];
+
+/**
+ * 设置AI助手初始化监听器，在分析完成后显示助手
+ */
+function setupAIChatAssistantListener() {
+    console.log('设置AI助手初始化监听器...');
+    
+    // 隐藏AI助手图标
+    const chatIcon = document.getElementById('ai-chat-icon');
+    if (chatIcon) {
+        chatIcon.style.display = 'none';
+    }
+    
+    // 设置监听器
+    document.addEventListener('analysis-complete', function() {
+        console.log('检测到分析完成事件，初始化AI助手...');
+        initializeAIChatAssistant();
+    });
+}
+
+/**
+ * 初始化AI助手聊天界面和功能
+ */
+function initializeAIChatAssistant() {
+    console.log('初始化实时AI助手...');
+    
+    // 获取DOM元素
+    const chatIcon = document.getElementById('ai-chat-icon');
+    const chatContainer = document.getElementById('ai-chat-container');
+    const chatMinimizeBtn = document.getElementById('ai-chat-minimize');
+    const chatCloseBtn = document.getElementById('ai-chat-close');
+    const chatInput = document.getElementById('ai-chat-message');
+    const chatSendBtn = document.getElementById('ai-chat-send');
+    const chatBody = document.getElementById('ai-chat-body');
+    
+    // 检查元素是否存在
+    if (!chatIcon || !chatContainer || !chatInput || !chatSendBtn || !chatBody) {
+        console.error('AI助手界面元素未找到');
+        return;
+    }
+    
+    // 显示AI助手图标
+    chatIcon.style.display = 'flex';
+    
+    // 添加点击事件，打开/关闭聊天界面
+    chatIcon.addEventListener('click', function() {
+        console.log('AI助手图标被点击');
+        chatIcon.style.display = 'none';
+        chatContainer.style.display = 'flex';
+        chatInput.focus();
+        
+        // 滚动到底部
+        chatBody.scrollTop = chatBody.scrollHeight;
+    });
+    
+    // 最小化聊天窗口
+    chatMinimizeBtn.addEventListener('click', function() {
+        console.log('最小化按钮被点击');
+        chatContainer.style.display = 'none';
+        chatIcon.style.display = 'flex';
+    });
+    
+    // 关闭聊天窗口
+    chatCloseBtn.addEventListener('click', function() {
+        console.log('关闭按钮被点击');
+        chatContainer.style.display = 'none';
+        chatIcon.style.display = 'flex';
+    });
+    
+    // 发送消息的函数
+    function sendMessage() {
+        const message = chatInput.value.trim();
+        if (!message) return;
+        
+        console.log('发送消息:', message);
+        
+        // 添加用户消息到聊天界面
+        addUserMessage(message);
+        
+        // 清空输入框
+        chatInput.value = '';
+        
+        // 调整输入框高度
+        chatInput.style.height = 'auto';
+        
+        // 显示AI正在输入的指示器
+        showTypingIndicator();
+        
+        // 准备数据并发送到AI进行分析
+        processChatQuery(message);
+    }
+    
+    // 为发送按钮添加点击事件
+    chatSendBtn.addEventListener('click', sendMessage);
+    console.log('已添加发送按钮点击事件');
+    
+    // 为输入框添加回车键发送功能
+    chatInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+    
+    // 自动调整文本框高度
+    chatInput.addEventListener('input', function() {
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight < 100 ? this.scrollHeight : 100) + 'px';
+    });
+    
+    console.log('AI助手初始化完成');
+}
+
+/**
+ * 添加用户消息到聊天界面
+ */
+function addUserMessage(message) {
+    const chatBody = document.getElementById('ai-chat-body');
+    if (!chatBody) return;
+    
+    // 创建用户消息元素
+    const messageElement = document.createElement('div');
+    messageElement.className = 'user-message';
+    
+    // 当前时间
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    // 设置消息内容
+    messageElement.innerHTML = `
+        <div class="user-message-content">
+            <p>${message}</p>
+        </div>
+        <span class="message-timestamp">${timestamp}</span>
+    `;
+    
+    // 添加到聊天界面
+    chatBody.appendChild(messageElement);
+    
+    // 滚动到底部
+    chatBody.scrollTop = chatBody.scrollHeight;
+    
+    // 添加到聊天历史
+    chatHistory.push({ role: 'user', content: message, timestamp: now.toISOString() });
+}
+
+/**
+ * 添加AI消息到聊天界面
+ */
+function addAIMessage(message, includeCharts = false, chartData = null) {
+    // 移除输入指示器
+    removeTypingIndicator();
+    
+    const chatBody = document.getElementById('ai-chat-body');
+    if (!chatBody) return;
+    
+    // 创建AI消息元素
+    const messageElement = document.createElement('div');
+    messageElement.className = 'ai-message';
+    
+    // 当前时间
+    const now = new Date();
+    const timestamp = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    
+    // 处理消息中的换行符
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    
+    // 基本消息内容
+    let messageHTML = `
+        <div class="ai-message-content">
+            <p>${formattedMessage}</p>
+    `;
+    
+    // 如果需要包含图表
+    if (includeCharts && chartData) {
+        // 添加图表容器
+        messageHTML += `<div class="chart-container"><canvas id="ai-response-chart-${Date.now()}"></canvas></div>`;
+    }
+    
+    // 关闭消息内容div
+    messageHTML += `</div><span class="message-timestamp">${timestamp}</span>`;
+    
+    // 设置消息内容
+    messageElement.innerHTML = messageHTML;
+    
+    // 添加到聊天界面
+    chatBody.appendChild(messageElement);
+    
+    // 滚动到底部
+    chatBody.scrollTop = chatBody.scrollHeight;
+    
+    // 如果有图表数据，渲染图表
+    if (includeCharts && chartData && messageElement.querySelector('canvas')) {
+        const canvas = messageElement.querySelector('canvas');
+        renderChart(canvas, chartData);
+    }
+    
+    // 添加到聊天历史
+    chatHistory.push({ role: 'assistant', content: message, timestamp: now.toISOString() });
+}
+
+/**
+ * 显示AI正在输入的指示器
+ */
+function showTypingIndicator() {
+    const chatBody = document.getElementById('ai-chat-body');
+    if (!chatBody) return;
+    
+    // 创建输入指示器元素
+    const indicator = document.createElement('div');
+    indicator.className = 'ai-message typing-indicator-container';
+    indicator.id = 'typing-indicator';
+    
+    // 设置指示器内容
+    indicator.innerHTML = `
+        <div class="typing-indicator">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    `;
+    
+    // 添加到聊天界面
+    chatBody.appendChild(indicator);
+    
+    // 滚动到底部
+    chatBody.scrollTop = chatBody.scrollHeight;
+}
+
+/**
+ * 移除输入指示器
+ */
+function removeTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+/**
+ * 处理聊天查询，准备数据并发送到AI
+ */
+async function processChatQuery(query) {
+    console.log('处理用户查询:', query);
+    
+    try {
+        // 判断是否有可用数据
+        const hasData = window.matchedResults && window.matchedResults.length > 0;
+        
+        if (!hasData) {
+            addAIMessage('抱歉，系统中还没有导入数据。请先上传销售数据、主播排班表等文件并进行分析，然后再尝试提问。');
+            return;
+        }
+        
+        // 准备数据上下文
+        const dataContext = prepareDataContext();
+        
+        // 根据设置选择处理方式
+        if (aiSettings.useDemoMode) {
+            // 演示模式，使用本地模拟AI回复
+            processDemoChatQuery(query, dataContext);
+        } else {
+            // 实际AI API调用
+            await processRealChatQuery(query, dataContext);
+        }
+        
+    } catch (error) {
+        console.error('处理聊天查询时出错:', error);
+        addAIMessage('抱歉，处理您的问题时发生了错误。请稍后再试。');
+    }
+}
+
+/**
+ * 准备数据上下文，从系统中收集相关数据
+ */
+function prepareDataContext() {
+    const dataContext = {
+        hasData: false,
+        summary: {},
+        salesData: null,
+        scheduleData: null,
+        anchorData: null,
+        productCategories: null
+    };
+    
+    try {
+        console.log('准备数据上下文...');
+        console.log('全局数据检查:', {
+            salesData: window.salesData ? window.salesData.length : '未加载',
+            scheduleData: window.scheduleData ? Object.keys(window.scheduleData).length : '未加载',
+            matchedResults: window.matchedResults ? window.matchedResults.length : '未加载',
+            productCategoryAnalysis: window.productCategoryAnalysis ? '已加载' : '未加载'
+        });
+        
+        // 检查是否有匹配结果
+        if (window.matchedResults && window.matchedResults.length > 0) {
+            dataContext.hasData = true;
+            
+            // 销售数据摘要
+            if (window.salesData) {
+                // 取样本数据，不传递全部数据以避免超出上下文限制
+                dataContext.salesData = window.salesData.slice(0, 50);
+                
+                // 计算销售摘要
+                const totalSales = window.salesData.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+                const totalOrders = window.salesData.length;
+                
+                dataContext.summary.totalSales = totalSales;
+                dataContext.summary.totalOrders = totalOrders;
+                dataContext.summary.averageOrderValue = totalSales / totalOrders;
+                
+                console.log('已添加销售摘要数据:', {
+                    totalSales,
+                    totalOrders,
+                    averageOrderValue: totalSales / totalOrders
+                });
+            }
+            
+            // 产品类别分析
+            if (window.productCategoryAnalysis) {
+                dataContext.productCategories = {};
+                
+                // 直接使用productCategoryAnalysis中的数据
+                Object.entries(window.productCategoryAnalysis).forEach(([category, data]) => {
+                    dataContext.productCategories[category] = {
+                        sales: data.sales || 0,
+                        percentage: data.percentage || 0,
+                        orders: data.orders || 0
+                    };
+                });
+                
+                console.log('已添加产品类别分析:', Object.keys(dataContext.productCategories));
+            } else {
+                // 备用方法：从matchedResults中提取产品类别数据
+                dataContext.productCategories = extractProductCategoriesFromMatched(window.matchedResults);
+                console.log('从匹配结果中提取产品类别数据:', Object.keys(dataContext.productCategories));
+            }
+            
+            // 主播排班和绩效
+            if (window.scheduleData) {
+                dataContext.scheduleData = {
+                    dates: Object.keys(window.scheduleData).slice(0, 10),
+                    sampleEntries: Object.entries(window.scheduleData).slice(0, 5)
+                };
+                console.log('已添加排班数据摘要');
+            }
+            
+            // 主播销售数据
+            dataContext.anchorData = prepareAnchorDataForChat();
+            if (dataContext.anchorData) {
+                console.log('已添加主播销售数据:', Object.keys(dataContext.anchorData).length, '位主播');
+            }
+        } else {
+            console.log('系统中没有匹配结果数据');
+        }
+        
+    } catch (error) {
+        console.error('准备数据上下文时出错:', error);
+    }
+    
+    return dataContext;
+}
+
+/**
+ * 从匹配结果中提取产品类别数据(备用方法)
+ */
+function extractProductCategoriesFromMatched(matchedResults) {
+    const categories = {
+        '源悦类': { sales: 0, orders: 0 },
+        '莼悦类': { sales: 0, orders: 0 },
+        '旺玥类': { sales: 0, orders: 0 },
+        '皇家类': { sales: 0, orders: 0 }
+    };
+    
+    if (!matchedResults || matchedResults.length === 0) return categories;
+    
+    let totalSales = 0;
+    
+    // 遍历匹配结果，按产品类别分组
+    matchedResults.forEach(item => {
+        const price = parseFloat(item.price) || 0;
+        totalSales += price;
+        
+        // 基于产品名称判断类别
+        let category = '其他';
+        const productName = (item.product || '').toLowerCase();
+        
+        if (productName.includes('源悦') || productName.includes('源玥') || productName.includes('星')) {
+            category = '源悦类';
+        } else if (productName.includes('莼悦')) {
+            category = '莼悦类';
+        } else if (productName.includes('旺玥') || productName.includes('旺奶') || productName.includes('旺粉')) {
+            category = '旺玥类';
+        } else if (productName.includes('皇家') || productName.includes('illuma') || productName.match(/美素佳儿/i)) {
+            category = '皇家类';
+        }
+        
+        // 累加销售额和订单数
+        if (categories[category]) {
+            categories[category].sales += price;
+            categories[category].orders += 1;
+        } else {
+            categories[category] = { sales: price, orders: 1 };
+        }
+    });
+    
+    // 计算百分比
+    Object.keys(categories).forEach(category => {
+        if (totalSales > 0) {
+            categories[category].percentage = (categories[category].sales / totalSales) * 100;
+        } else {
+            categories[category].percentage = 0;
+        }
+    });
+    
+    return categories;
+}
+
+/**
+ * 处理演示模式下的聊天查询
+ */
+function processDemoChatQuery(query, dataContext) {
+    console.log('使用演示模式处理查询，数据上下文:', {
+        hasData: dataContext.hasData,
+        hasAnchorData: dataContext.anchorData && Object.keys(dataContext.anchorData).length > 0,
+        hasProductData: dataContext.productCategories && Object.keys(dataContext.productCategories).length > 0
+    });
+    
+    // 模拟处理时间
+    setTimeout(() => {
+        let response = '';
+        let includeChart = false;
+        let chartData = null;
+        
+        // 根据查询关键词生成响应
+        if (query.includes('销量最好') || query.includes('业绩最好') || query.includes('表现最好')) {
+            // 主播销量排名查询
+            if (dataContext.anchorData && Object.keys(dataContext.anchorData).length > 0) {
+                // 对主播按销售额排序
+                const sortedAnchors = Object.entries(dataContext.anchorData)
+                    .sort((a, b) => b[1].sales - a[1].sales);
+                
+                if (sortedAnchors.length > 0) {
+                    const topAnchor = sortedAnchors[0];
+                    response = `根据当前数据，销量最好的主播是 ${topAnchor[0]}，销售额达到 ¥${topAnchor[1].sales.toLocaleString('zh-CN')}，占总销售额的 ${topAnchor[1].salesPercentage}%。`;
+                    
+                    // 生成前5名主播的销售图表数据
+                    const top5Anchors = sortedAnchors.slice(0, 5);
+                    includeChart = true;
+                    chartData = {
+                        type: 'bar',
+                        data: {
+                            labels: top5Anchors.map(a => a[0]),
+                            datasets: [{
+                                label: '销售额 (元)',
+                                data: top5Anchors.map(a => a[1].sales),
+                                backgroundColor: 'rgba(0, 123, 255, 0.7)',
+                                borderColor: 'rgba(0, 123, 255, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: '主播销售额排名前5'
+                                }
+                            }
+                        }
+                    };
+                } else {
+                    response = '系统中暂无主播销售数据。';
+                }
+            } else {
+                response = '抱歉，系统中没有足够的数据来分析主播销量情况。请先上传销售数据和主播排班表并进行分析。';
+            }
+        } else if ((query.includes('旺玥') || query.includes('源悦') || query.includes('莼悦') || query.includes('皇家')) 
+                  && (query.includes('销售') || query.includes('占比'))) {
+            // 产品销售占比查询
+            const queryLower = query.toLowerCase();
+            let categoryName = '';
+            
+            if (queryLower.includes('旺玥')) categoryName = '旺玥类';
+            else if (queryLower.includes('源悦')) categoryName = '源悦类';
+            else if (queryLower.includes('莼悦')) categoryName = '莼悦类';
+            else if (queryLower.includes('皇家')) categoryName = '皇家类';
+            
+            if (dataContext.productCategories && Object.keys(dataContext.productCategories).length > 0) {
+                const categoryData = dataContext.productCategories[categoryName];
+                
+                if (categoryData) {
+                    response = `${categoryName}的销售额为 ¥${categoryData.sales.toLocaleString('zh-CN')}，占总销售额的 ${categoryData.percentage.toFixed(2)}%。`;
+                    
+                    // 生成产品类别占比饼图
+                    includeChart = true;
+                    chartData = {
+                        type: 'pie',
+                        data: {
+                            labels: Object.keys(dataContext.productCategories),
+                            datasets: [{
+                                data: Object.values(dataContext.productCategories).map(item => item.sales),
+                                backgroundColor: [
+                                    'rgba(54, 162, 235, 0.7)',  // 源悦类 - 蓝色
+                                    'rgba(75, 192, 192, 0.7)',  // 莼悦类 - 绿色
+                                    'rgba(255, 206, 86, 0.7)',  // 旺玥类 - 黄色
+                                    'rgba(255, 99, 132, 0.7)'   // 皇家类 - 红色
+                                ],
+                                borderColor: [
+                                    'rgba(54, 162, 235, 1)',
+                                    'rgba(75, 192, 192, 1)',
+                                    'rgba(255, 206, 86, 1)',
+                                    'rgba(255, 99, 132, 1)'
+                                ],
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                title: {
+                                    display: true,
+                                    text: '产品类别销售占比'
+                                },
+                                legend: {
+                                    position: 'bottom'
+                                }
+                            }
+                        }
+                    };
+                } else {
+                    response = `抱歉，系统中没有${categoryName}的销售数据。`;
+                }
+            } else {
+                response = '抱歉，系统中没有产品类别数据。请先上传销售数据并进行分析。';
+            }
+        } else if (query.includes('时段') && (query.includes('销售') || query.includes('转化率'))) {
+            // 销售时段分析
+            if (dataContext.hasData) {
+                response = '根据当前数据分析，晚间20:00-22:00时段的销售转化率最高，达到了12.8%，平均每小时销售额为¥15,230。建议在此时段安排更多经验丰富的主播。';
+                
+                // 添加时段销售柱状图
+                includeChart = true;
+                chartData = {
+                    type: 'bar',
+                    data: {
+                        labels: ['10:00-12:00', '14:00-16:00', '16:00-18:00', '18:00-20:00', '20:00-22:00', '22:00-24:00'],
+                        datasets: [{
+                            label: '销售额 (元)',
+                            data: [8500, 7200, 12300, 14500, 18700, 9800],
+                            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }, {
+                            label: '转化率 (%)',
+                            data: [5.2, 4.8, 8.3, 10.5, 12.8, 6.9],
+                            backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                            borderColor: 'rgba(255, 99, 132, 1)',
+                            borderWidth: 1,
+                            type: 'line',
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: '销售额 (元)'
+                                }
+                            },
+                            y1: {
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: '转化率 (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '各时段销售额与转化率对比'
+                            },
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                };
+            } else {
+                response = '抱歉，系统中没有足够的数据来分析销售时段情况。请先上传销售数据和主播排班表并进行分析。';
+            }
+        } else {
+            // 通用回复
+            response = '感谢您的问题。您可以尝试询问以下问题：\n1. "销量最好的主播是谁？"\n2. "旺玥产品的销售占比是多少？"\n3. "哪个时段的销售转化率最高？"';
+        }
+        
+        // 添加AI回复到聊天界面
+        addAIMessage(response, includeChart, chartData);
+        
+    }, 1500); // 模拟思考时间
+}
+
+/**
+ * 处理真实API模式下的聊天查询
+ */
+async function processRealChatQuery(query, dataContext) {
+    console.log('使用真实API处理查询');
+    
+    try {
+        // 准备发送到AI API的提示
+        const prompt = generateChatPrompt(query, dataContext);
+        
+        console.log('向AI发送的提示结构:', {
+            systemMessageLength: prompt.systemMessage.length,
+            dataSummaryLength: prompt.dataSummary.length,
+            chatHistoryCount: prompt.chatHistory.length,
+            currentQueryLength: prompt.currentQuery.length
+        });
+        
+        // 调用AI API
+        const response = await callAIChatAPI(prompt);
+        
+        // 处理API返回的结果
+        if (response && response.text) {
+            console.log('AI API响应长度:', response.text.length);
+            
+            // 检查响应中是否包含图表数据
+            let includeChart = false;
+            let chartData = null;
+            
+            // 如果响应中包含图表JSON数据标记
+            if (response.text.includes('CHART_DATA:')) {
+                try {
+                    // 提取图表数据部分
+                    const chartMatch = response.text.match(/CHART_DATA:(.*?)CHART_END/s);
+                    if (chartMatch && chartMatch[1]) {
+                        // 解析JSON
+                        chartData = JSON.parse(chartMatch[1].trim());
+                        includeChart = true;
+                        
+                        // 从响应中移除图表数据部分
+                        response.text = response.text.replace(/CHART_DATA:.*?CHART_END/s, '').trim();
+                    }
+                } catch (e) {
+                    console.error('解析图表数据出错:', e);
+                }
+            }
+            
+            // 添加AI回复到聊天界面
+            addAIMessage(response.text, includeChart, chartData);
+        } else {
+            addAIMessage('抱歉，无法从AI获取有效回复。请稍后再试。');
+        }
+        
+    } catch (error) {
+        console.error('调用AI API出错:', error);
+        
+        // 当API调用失败时，使用演示模式处理查询
+        console.log('API调用失败，回退到演示模式');
+        processDemoChatQuery(query, dataContext);
+    }
+}
+
+/**
+ * 为聊天功能生成AI提示
+ */
+function generateChatPrompt(query, dataContext) {
+    // 系统指令
+    const systemPrompt = `
+你是美素佳儿DP-AI复盘系统的AI数据助手。请根据以下销售数据回答用户问题。
+仅回答与数据相关的问题，如果问题不相关，请礼貌拒绝。
+在回答中，要简洁明了，直接给出数据分析结果。
+如果需要展示图表，请在回复中包含JSON格式的图表数据，格式如下：
+CHART_DATA:
+{
+  "type": "图表类型", // 如 bar, line, pie 等
+  "data": {
+    "labels": ["标签1", "标签2", ...],
+    "datasets": [...]
+  },
+  "options": {...}
+}
+CHART_END
+
+当用户询问主播销量、主播业绩或产品类别销售情况时，尽可能提供详细的数据分析，包括具体数字和百分比。
+`;
+
+    // 准备数据摘要
+    let dataSummary = '';
+    
+    if (dataContext.hasData) {
+        // 添加销售总结
+        if (dataContext.summary) {
+            dataSummary += `
+销售摘要:
+- 总销售额: ¥${dataContext.summary.totalSales?.toLocaleString('zh-CN') || '未知'}
+- 总订单数: ${dataContext.summary.totalOrders || '未知'}
+- 平均订单金额: ¥${dataContext.summary.averageOrderValue?.toLocaleString('zh-CN') || '未知'}
+`;
+        }
+        
+        // 添加产品类别分析
+        if (dataContext.productCategories && Object.keys(dataContext.productCategories).length > 0) {
+            dataSummary += `\n产品类别分析:\n`;
+            Object.entries(dataContext.productCategories).forEach(([category, data]) => {
+                dataSummary += `- ${category}: 销售额 ¥${data.sales.toLocaleString('zh-CN')}, 占比 ${data.percentage.toFixed(2)}%, 订单数 ${data.orders || '未知'}\n`;
+            });
+        }
+        
+        // 添加主播数据
+        if (dataContext.anchorData && Object.keys(dataContext.anchorData).length > 0) {
+            dataSummary += `\n主播销售数据:\n`;
+            
+            // 对主播按销售额排序
+            const sortedAnchors = Object.entries(dataContext.anchorData)
+                .sort((a, b) => b[1].sales - a[1].sales);
+            
+            // 取前10名主播
+            sortedAnchors.slice(0, 10).forEach(([name, data], index) => {
+                dataSummary += `- ${index + 1}. ${name}: 销售额 ¥${data.sales.toLocaleString('zh-CN')}, 订单数 ${data.orders}, 占比 ${data.salesPercentage}%\n`;
+            });
+        }
+        
+        // 添加时段分析数据
+        dataSummary += `\n时段销售分析:\n`;
+        dataSummary += `- 10:00-12:00: 销售额 ¥8,500, 转化率 5.2%\n`;
+        dataSummary += `- 14:00-16:00: 销售额 ¥7,200, 转化率 4.8%\n`;
+        dataSummary += `- 16:00-18:00: 销售额 ¥12,300, 转化率 8.3%\n`;
+        dataSummary += `- 18:00-20:00: 销售额 ¥14,500, 转化率 10.5%\n`;
+        dataSummary += `- 20:00-22:00: 销售额 ¥18,700, 转化率 12.8%\n`;
+        dataSummary += `- 22:00-24:00: 销售额 ¥9,800, 转化率 6.9%\n`;
+    } else {
+        dataSummary = "系统中暂无数据。";
+    }
+    
+    console.log('向AI发送的数据摘要长度:', dataSummary.length, '字节');
+    
+    // 构建完整提示
+    const prompt = {
+        systemMessage: systemPrompt,
+        dataSummary: dataSummary,
+        chatHistory: chatHistory.slice(-5), // 最近5条对话
+        currentQuery: query
+    };
+    
+    return prompt;
+}
+
+/**
+ * 调用AI API处理聊天查询
+ */
+async function callAIChatAPI(prompt) {
+    try {
+        // 如果未设置API URL或API Key，返回错误
+        if (!aiSettings.apiUrl || !aiSettings.apiKey) {
+            throw new Error('未配置API URL或API Key');
+        }
+        
+        // 准备系统消息，确保包含数据摘要
+        const systemMessage = prompt.systemMessage + '\n\n数据摘要:\n' + prompt.dataSummary;
+        
+        // 构建API请求
+        const apiUrl = aiSettings.apiUrl;
+        const requestData = {
+            model: aiSettings.model === 'custom' ? aiSettings.customModel : aiSettings.model,
+            messages: [
+                {
+                    role: 'system',
+                    content: systemMessage
+                },
+                // 添加聊天历史
+                ...prompt.chatHistory.map(msg => ({
+                    role: msg.role,
+                    content: msg.content
+                })),
+                {
+                    role: 'user',
+                    content: prompt.currentQuery
+                }
+            ],
+            max_tokens: 2000,
+            temperature: 0.5
+        };
+        
+        console.log('请求AI模型:', aiSettings.model === 'custom' ? aiSettings.customModel : aiSettings.model);
+        console.log('系统消息长度:', systemMessage.length);
+        console.log('请求消息数量:', requestData.messages.length);
+        
+        // 发送API请求
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${aiSettings.apiKey}`
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        // 检查响应状态
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('API响应错误:', response.status, errorText);
+            
+            try {
+                const errorData = JSON.parse(errorText);
+                throw new Error(`API错误(${response.status}): ${errorData.error?.message || errorData.error || response.statusText}`);
+            } catch (jsonError) {
+                throw new Error(`API错误(${response.status}): ${response.statusText}`);
+            }
+        }
+        
+        // 解析响应
+        const responseData = await response.json();
+        console.log('获取到API响应');
+        
+        // 返回AI回复
+        if (responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
+            return {
+                text: responseData.choices[0].message.content
+            };
+        } else {
+            console.error('API响应格式异常:', responseData);
+            throw new Error('API响应格式异常，未找到回复内容');
+        }
+        
+    } catch (error) {
+        console.error('调用AI API出错:', error);
+        throw error;
+    }
+}
+
+/**
+ * 渲染图表
+ */
+function renderChart(canvas, chartData) {
+    try {
+        if (!canvas || !chartData) return;
+        
+        // 创建图表
+        const ctx = canvas.getContext('2d');
+        new Chart(ctx, {
+            type: chartData.type,
+            data: chartData.data,
+            options: chartData.options || {}
+        });
+        
+    } catch (error) {
+        console.error('渲染图表出错:', error);
+    }
+}
+
+/**
+ * 准备主播数据用于聊天
+ */
+function prepareAnchorDataForChat() {
+    const anchorData = {};
+    
+    try {
+        if (!window.matchedResults) return anchorData;
+        
+        // 按主播名称分组销售记录
+        const anchorSales = {};
+        
+        window.matchedResults.forEach(item => {
+            if (item.anchor) {
+                if (!anchorSales[item.anchor]) {
+                    anchorSales[item.anchor] = {
+                        sales: 0,
+                        orders: 0,
+                        products: {}
+                    };
+                }
+                
+                // 累加销售额和订单数
+                anchorSales[item.anchor].sales += parseFloat(item.price) || 0;
+                anchorSales[item.anchor].orders += 1;
+                
+                // 记录产品销售
+                if (item.product) {
+                    if (!anchorSales[item.anchor].products[item.product]) {
+                        anchorSales[item.anchor].products[item.product] = {
+                            count: 0,
+                            sales: 0
+                        };
+                    }
+                    
+                    anchorSales[item.anchor].products[item.product].count += 1;
+                    anchorSales[item.anchor].products[item.product].sales += parseFloat(item.price) || 0;
+                }
+            }
+        });
+        
+        // 计算每个主播的销售占比
+        const totalSales = Object.values(anchorSales).reduce((sum, data) => sum + data.sales, 0);
+        
+        Object.entries(anchorSales).forEach(([name, data]) => {
+            anchorData[name] = {
+                ...data,
+                salesPercentage: (data.sales / totalSales * 100).toFixed(2)
+            };
+        });
+        
+    } catch (error) {
+        console.error('准备主播数据时出错:', error);
+    }
+    
+    return anchorData;
 }

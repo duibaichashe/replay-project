@@ -46,35 +46,38 @@
                 <p class="lead text-secondary">美素佳儿抖音DP智能复盘系统通过整合直播销售数据、主播排班表及复盘文档，利用AI分析主播话术质量、互动节奏与排班效率，自动生成针对性优化方案与定制化话术指南，驱动主播能力提升与销售转化率增长，实现"数据归因-精准诊断-策略迭代"闭环管理。</p>
             </header>
 
-            <main>
-                <!-- 文件处理区域 -->
-                <section class="process-section mb-5">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-header bg-gradient-primary text-white">
-                            <h2 class="h4 mb-0"><i class="bi bi-file-earmark-text me-2"></i>文件处理</h2>
-                        </div>
-                        <div class="card-body p-4">
-                            <div class="row">
-                                <div class="col-md-12 mb-4">
-                                    <div class="upload-area" data-type="process" id="process-upload-area" data-status="process-status">
-                                        <div class="upload-icon">
-                                            <i class="bi bi-file-earmark-excel"></i>
-                                        </div>
-                                        <h5 class="text-primary font-weight-bold">上传待处理文件</h5>
-                                        <p class="text-muted small mb-3">拖放或点击上传Excel文件</p>
-                                        <input type="file" class="file-input" id="process-file" accept=".xlsx,.xls" hidden>
-                                        <label for="process-file" class="btn btn-outline-primary rounded-pill px-4">
-                                            <i class="bi bi-upload me-2"></i>选择文件
-                                        </label>
-                                        <div id="process-status" class="mt-2"></div>
-                                        <div id="process-file-info" class="mt-3 w-100">
-                                            <div class="file-details d-none bg-light p-3 rounded">
-                                                <div class="d-flex align-items-center">
-                                                    <i class="bi bi-file-earmark-excel text-success me-2 fs-4"></i>
-                                                    <div>
-                                                        <div class="text-primary fw-bold file-name"></div>
-                                                        <div class="text-muted small file-size-wrapper">大小: <span class="file-size badge bg-primary"></span></div>
-                                                    </div>
+            <!-- AI文件预处理区域 -->
+            <section class="ai-preprocess-section mb-5">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-gradient-primary text-white">
+                        <h2 class="h4 mb-0"><i class="bi bi-robot me-2"></i>AI文件预处理</h2>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <p class="text-muted">上传需要预处理的Excel文件，使用AI智能清洗和整理数据，处理后的文件可以导出或直接用于系统分析。</p>
+                            </div>
+                            
+                            <!-- AI处理文件上传 -->
+                            <div class="col-md-6 mb-4">
+                                <div class="upload-area" data-type="ai-preprocess" id="ai-preprocess-upload-area" data-status="ai-preprocess-status">
+                                    <div class="upload-icon">
+                                        <i class="bi bi-file-earmark-excel"></i>
+                                    </div>
+                                    <h5 class="text-primary font-weight-bold">待处理文件</h5>
+                                    <p class="text-muted small mb-3">拖放或点击上传Excel文件</p>
+                                    <input type="file" class="file-input" id="ai-preprocess-file" accept=".xlsx,.xls" hidden>
+                                    <label for="ai-preprocess-file" class="btn btn-outline-primary rounded-pill px-4">
+                                        <i class="bi bi-upload me-2"></i>选择文件
+                                    </label>
+                                    <div id="ai-preprocess-status" class="mt-2"></div>
+                                    <div id="ai-preprocess-file-info" class="mt-3 w-100">
+                                        <div class="file-details d-none bg-light p-3 rounded">
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-file-earmark-excel text-success me-2 fs-4"></i>
+                                                <div>
+                                                    <div class="text-primary fw-bold file-name"></div>
+                                                    <div class="text-muted small file-size-wrapper">大小: <span class="file-size badge bg-primary"></span></div>
                                                 </div>
                                             </div>
                                         </div>
@@ -82,27 +85,39 @@
                                 </div>
                             </div>
                             
-                            <div class="row mt-2 mb-4">
-                                <div class="col-md-12">
-                                    <div class="mb-3">
-                                        <label for="process-requirements" class="form-label fw-bold">处理要求</label>
-                                        <textarea class="form-control" id="process-requirements" rows="4" placeholder="请输入您希望AI如何处理这个文件，例如：筛选出销售额大于5000的订单，并按主播分组"></textarea>
+                            <!-- AI处理指令输入 -->
+                            <div class="col-md-6 mb-4">
+                                <div class="h-100 d-flex flex-column">
+                                    <div class="form-group flex-grow-1">
+                                        <label for="ai-preprocess-instruction" class="form-label text-primary fw-bold">处理指令</label>
+                                        <textarea id="ai-preprocess-instruction" class="form-control h-75" 
+                                            placeholder="请输入处理指令，例如：&#10;1. 保留'订单编号'、'商品名称'、'销售金额'等字段&#10;2. 删除所有含空值的行&#10;3. 按销售金额降序排列"></textarea>
+                                    </div>
+                                    <div class="mt-3">
+                                        <button id="start-ai-preprocess-btn" class="btn btn-primary rounded-pill px-4" disabled>
+                                            <i class="bi bi-magic me-2"></i>开始处理
+                                        </button>
+                                        <button id="download-processed-file-btn" class="btn btn-outline-success rounded-pill px-4 ms-2" disabled>
+                                            <i class="bi bi-download me-2"></i>下载处理结果
+                                        </button>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <div class="text-center mt-4">
-                                <button class="btn btn-primary btn-lg rounded-pill px-5 py-2 shadow-sm" id="process-btn" disabled>
-                                    <i class="bi bi-magic me-2"></i>开始处理
-                                </button>
-                                <button class="btn btn-success btn-lg rounded-pill px-5 py-2 ms-3 shadow-sm d-none" id="export-process-btn">
-                                    <i class="bi bi-download me-2"></i>导出结果
-                                </button>
+                        </div>
+
+                        <!-- 处理状态和进度条 -->
+                        <div id="ai-preprocess-progress-container" class="mt-3 d-none">
+                            <div class="progress mb-2" style="height: 10px;">
+                                <div id="ai-preprocess-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                    role="progressbar" style="width: 0%"></div>
                             </div>
+                            <p id="ai-preprocess-progress-text" class="text-center text-muted small">准备处理文件...</p>
                         </div>
                     </div>
-                </section>
+                </div>
+            </section>
 
+            <main>
                 <!-- 上传区域 -->
                 <section class="upload-section mb-5">
                     <div class="card shadow-sm border-0">
@@ -228,6 +243,9 @@
                                 <button class="btn btn-outline-secondary btn-lg rounded-pill px-4 py-2 ms-3" id="clear-btn">
                                     <i class="bi bi-x-lg me-2"></i>清除
                                 </button>
+                                <div class="mt-3 text-muted small">
+                                    <i class="bi bi-info-circle me-1"></i>点击"开始分析"后，AI助手将自动激活，可用于询问数据分析相关问题
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -756,6 +774,7 @@
                                                 <li><strong>效率分析:</strong> 评估不同时间段和排班模式的效果</li>
                                                 <li><strong>话术优化:</strong> 提供针对性的话术改进建议</li>
                                                 <li><strong>品类建议:</strong> 优化主播与产品类目的匹配</li>
+                                                <li><strong>AI文件预处理:</strong> 智能清洗和转换Excel数据格式</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -782,9 +801,13 @@
                                         <h6 class="text-primary">Q: 如何使用AI分析功能?</h6>
                                         <p>A: 上传并分析数据后，点击"AI智能点评"标签页，然后点击"开始AI分析"按钮即可启动AI分析流程。</p>
                                     </div>
-                                    <div class="faq-item">
+                                    <div class="faq-item mb-3">
                                         <h6 class="text-primary">Q: 是否支持批量导出所有主播的分析结果?</h6>
                                         <p>A: 是的，在AI分析完成后，您可以使用"导出结果"按钮将所有主播的分析结果导出为一个完整的报告。</p>
+                                    </div>
+                                    <div class="faq-item">
+                                        <h6 class="text-primary">Q: 如何使用AI文件预处理功能?</h6>
+                                        <p>A: 在页面顶部的"AI文件预处理"区域，上传需要处理的Excel文件，然后在处理指令框中输入您想要AI执行的处理任务（如筛选特定字段、删除空行等），点击"开始处理"按钮即可。处理完成后，您可以下载处理结果或直接使用该文件进行后续分析。</p>
                                     </div>
                                 </div>
                             </div>
@@ -799,58 +822,42 @@
         </div>
     </div>
 
-    <!-- 文件处理结果模态框 -->
-    <div class="modal fade" id="process-result-modal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title"><i class="bi bi-file-earmark-spreadsheet me-2"></i>文件处理结果</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-4">
-                        <h6 class="border-bottom pb-2">处理要求</h6>
-                        <div id="result-requirements" class="p-3 bg-light rounded"></div>
+    <!-- 浮动AI助手聊天图标 -->
+    <div class="ai-chat-icon" id="ai-chat-icon">
+        <i class="bi bi-robot"></i>
+    </div>
+
+    <!-- AI助手聊天界面 -->
+    <div class="ai-chat-container" id="ai-chat-container">
+        <div class="ai-chat-header">
+            <h5><i class="bi bi-robot me-2"></i>美素佳儿数据助手</h5>
+            <div class="chat-controls">
+                <button class="btn btn-sm btn-light" id="ai-chat-minimize"><i class="bi bi-chevron-down"></i></button>
+                <button class="btn btn-sm btn-light" id="ai-chat-close"><i class="bi bi-x"></i></button>
+            </div>
+        </div>
+        <div class="ai-chat-body" id="ai-chat-body">
+            <!-- 消息内容区域 -->
+            <div class="ai-welcome-message">
+                <div class="ai-message">
+                    <div class="ai-message-content">
+                        <p>您好！我是美素佳儿数据助手。您可以询问关于销售数据、主播绩效等任何问题，例如：</p>
+                        <ul>
+                            <li>"上个月销量最好的主播是谁？"</li>
+                            <li>"旺玥产品的销售占比是多少？"</li>
+                            <li>"哪个时段的销售转化率最高？"</li>
+                        </ul>
                     </div>
-                    
-                    <div class="mb-4">
-                        <h6 class="border-bottom pb-2">处理结果</h6>
-                        <div id="processing-spinner" class="text-center p-5">
-                            <div class="spinner-border text-primary mb-3" role="status">
-                                <span class="visually-hidden">正在处理...</span>
-                            </div>
-                            <h5 class="text-muted">AI正在处理您的文件...</h5>
-                        </div>
-                        <div id="process-result-container" class="d-none">
-                            <div class="alert alert-info mb-3">
-                                <i class="bi bi-info-circle me-2"></i>
-                                <span id="process-summary">处理完成</span>
-                            </div>
-                            
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover" id="process-result-table">
-                                    <thead class="table-primary">
-                                        <!-- 表头将根据数据动态生成 -->
-                                    </thead>
-                                    <tbody>
-                                        <!-- 表内容将根据数据动态生成 -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-success" id="modal-export-process-btn">
-                        <i class="bi bi-download me-1"></i>导出结果
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                 </div>
             </div>
         </div>
+        <div class="ai-chat-input">
+            <textarea id="ai-chat-message" placeholder="输入您的问题..." rows="1"></textarea>
+            <button id="ai-chat-send" class="btn btn-primary"><i class="bi bi-send"></i></button>
+        </div>
     </div>
 
-    <!-- 引入JS脚本 -->
+    <!-- 引入JavaScript文件 -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

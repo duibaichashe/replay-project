@@ -486,4 +486,316 @@ footer {
 .notification {
     transition: all 0.3s ease;
     border-radius: 8px;
+}
+
+/* AI预处理功能样式 */
+.ai-preprocess-section .card-header {
+    background: linear-gradient(45deg, #2c3e50, #3498db);
+}
+
+.ai-preprocess-section .upload-area {
+    background-color: rgba(236, 240, 245, 0.5);
+    border: 2px dashed #b8c2cc;
+}
+
+.ai-preprocess-section .upload-area:hover,
+.ai-preprocess-section .upload-area.highlight {
+    background-color: rgba(236, 240, 245, 0.9);
+    border-color: #4e73df;
+}
+
+.ai-preprocess-section .form-control {
+    border-radius: 6px;
+    border: 1px solid #d1d9e6;
+    min-height: 100px;
+}
+
+.ai-preprocess-section .form-control:focus {
+    border-color: #4e73df;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+/* 进度条样式 */
+#ai-preprocess-progress-container .progress {
+    border-radius: 10px;
+    overflow: hidden;
+    background-color: #eaecf4;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+#ai-preprocess-progress-bar {
+    background: linear-gradient(45deg, #4e73df, #36b9cc);
+    transition: width 0.3s ease;
+}
+
+#ai-preprocess-progress-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+/* AI预处理按钮样式 */
+#start-ai-preprocess-btn {
+    background: linear-gradient(45deg, #4e73df, #6f42c1);
+    border: none;
+}
+
+#start-ai-preprocess-btn:hover {
+    background: linear-gradient(45deg, #3867d6, #5e35b1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+#download-processed-file-btn {
+    border: 1px solid #2ecc71;
+    color: #2ecc71;
+}
+
+#download-processed-file-btn:hover {
+    background-color: #2ecc71;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* AI状态消息样式 */
+#ai-preprocess-status .alert {
+    width: 100%;
+    border-radius: 5px;
+    padding: 0.5rem 1rem;
+}
+
+/* 适配移动设备 */
+@media (max-width: 768px) {
+    .ai-preprocess-section .col-md-6 {
+        margin-bottom: 1rem;
+    }
+    
+    #ai-preprocess-instruction {
+        min-height: 80px;
+    }
+}
+
+/* AI助手聊天界面样式 */
+.ai-chat-icon {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background-color: #007bff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.ai-chat-icon:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.ai-chat-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 380px;
+    height: 500px;
+    background-color: #fff;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ai-chat-header {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top-left-radius: 15px;
+    border-top-right-radius: 15px;
+}
+
+.ai-chat-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.chat-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.chat-controls button {
+    border: none;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 0;
+}
+
+.ai-chat-body {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background-color: #f8f9fa;
+}
+
+.ai-welcome-message {
+    margin-bottom: 15px;
+}
+
+.ai-message, .user-message {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.user-message {
+    align-items: flex-end;
+}
+
+.ai-message-content, .user-message-content {
+    max-width: 80%;
+    padding: 12px 15px;
+    border-radius: 18px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.ai-message-content {
+    background-color: white;
+    border-top-left-radius: 3px;
+}
+
+.user-message-content {
+    background-color: #007bff;
+    color: white;
+    border-bottom-right-radius: 3px;
+}
+
+.ai-message p, .user-message p {
+    margin: 0;
+}
+
+.ai-message ul {
+    margin: 10px 0 0 0;
+    padding-left: 20px;
+}
+
+.ai-message ul li {
+    margin-bottom: 5px;
+}
+
+.ai-chat-input {
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    border-top: 1px solid #e9ecef;
+    background-color: white;
+}
+
+.ai-chat-input textarea {
+    flex: 1;
+    border: 1px solid #ced4da;
+    border-radius: 20px;
+    padding: 10px 15px;
+    resize: none;
+    font-size: 14px;
+    min-height: 24px;
+    max-height: 100px;
+    overflow-y: auto;
+    margin-right: 10px;
+}
+
+.ai-chat-input textarea:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.ai-chat-input button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ai-message .chart-container {
+    margin-top: 10px;
+    max-width: 100%;
+    height: 200px;
+}
+
+.ai-message .data-table {
+    margin-top: 10px;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ai-message .data-table th, 
+.ai-message .data-table td {
+    border: 1px solid #e9ecef;
+    padding: 8px;
+    font-size: 12px;
+}
+
+.ai-message .data-table th {
+    background-color: #f8f9fa;
+}
+
+.message-timestamp {
+    font-size: 10px;
+    color: #adb5bd;
+    margin-top: 5px;
+}
+
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: white;
+    border-radius: 18px;
+    border-top-left-radius: 3px;
+    margin-bottom: 15px;
+    max-width: 60px;
+}
+
+.typing-indicator span {
+    height: 8px;
+    width: 8px;
+    background-color: #007bff;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 2px;
+    opacity: 0.6;
+    animation: typing 1s infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typing {
+    0% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0.4; transform: scale(0.8); }
 } 
